@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       { role: "user", content: message },
     ];
 
-    // Check for API key
+    // Check for API keys - Priority: OpenAI > DeepSeek
     let response: string;
 
     if (process.env.OPENAI_API_KEY) {
@@ -54,6 +54,23 @@ export async function POST(req: Request) {
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
+        messages: context,
+        max_tokens: 500,
+        temperature: 0.7,
+      });
+
+      response =
+        completion.choices[0]?.message?.content ||
+        "Lo siento, no pude procesar tu solicitud. ¿Puedes intentarlo de nuevo?";
+    } else if (process.env.DEEPSEEK_API_KEY) {
+      const { default: OpenAI } = await import("openai");
+      const deepseek = new OpenAI({
+        apiKey: process.env.DEEPSEEK_API_KEY,
+        baseURL: "https://api.deepseek.com/v1",
+      });
+
+      const completion = await deepseek.chat.completions.create({
+        model: "deepseek-chat",
         messages: context,
         max_tokens: 500,
         temperature: 0.7,
