@@ -46,6 +46,11 @@ export async function POST(req: Request) {
     ];
 
     // Check for API keys - Priority: OpenAI > DeepSeek
+    const openAiModel = process.env.LLM_MODEL || "gpt-4o-mini";
+    const deepSeekModel = process.env.LLM_MODEL || "deepseek-chat";
+    const deepSeekBaseUrl = process.env.DEEPSEEK_API_BASE_URL || "https://api.deepseek.com/v1";
+    const maxTokens = 500;
+    const temperature = 0.7;
     let response: string;
 
     if (process.env.OPENAI_API_KEY) {
@@ -53,10 +58,10 @@ export async function POST(req: Request) {
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: openAiModel,
         messages: context,
-        max_tokens: 500,
-        temperature: 0.7,
+        max_tokens: maxTokens,
+        temperature,
       });
 
       response =
@@ -66,14 +71,14 @@ export async function POST(req: Request) {
       const { default: OpenAI } = await import("openai");
       const deepseek = new OpenAI({
         apiKey: process.env.DEEPSEEK_API_KEY,
-        baseURL: "https://api.deepseek.com/v1",
+        baseURL: deepSeekBaseUrl,
       });
 
       const completion = await deepseek.chat.completions.create({
-        model: "deepseek-chat",
+        model: deepSeekModel,
         messages: context,
-        max_tokens: 500,
-        temperature: 0.7,
+        max_tokens: maxTokens,
+        temperature,
       });
 
       response =
