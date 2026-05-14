@@ -6,7 +6,7 @@ module.exports = {
     cwd: '/home/ubuntu/consultoriaenmarketing',
     env: {
       NODE_ENV: 'production',
-      PORT: 3001,
+      PORT: 3199,
     },
     instances: 1,
     exec_mode: 'fork',
