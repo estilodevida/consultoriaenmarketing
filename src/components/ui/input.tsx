@@ -1,21 +1,69 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 
-const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  ({ className, type, ...props }, ref) => {
-    return (
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: string
+  error?: string
+}
+
+export function Input({ label, error, className, id, ...props }: InputProps) {
+  const inputId = id || label?.toLowerCase().replace(/\s+/g, '-')
+
+  return (
+    <div className="space-y-1.5">
+      {label && (
+        <label htmlFor={inputId} className="block text-sm font-medium text-neutral-700">
+          {label}
+        </label>
+      )}
       <input
-        type={type}
+        id={inputId}
         className={cn(
-          "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-          className
+          'w-full px-4 py-3 rounded-xl border border-neutral-300 bg-white text-neutral-900',
+          'placeholder:text-neutral-400',
+          'transition-all duration-200',
+          'focus-ring',
+          error && 'border-red-400 focus-visible:ring-red-400',
+          className,
         )}
-        ref={ref}
         {...props}
       />
-    )
-  }
-)
-Input.displayName = "Input"
+      {error && (
+        <p className="text-sm text-red-500">{error}</p>
+      )}
+    </div>
+  )
+}
 
-export { Input }
+interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  label?: string
+  error?: string
+}
+
+export function Textarea({ label, error, className, id, ...props }: TextareaProps) {
+  const inputId = id || label?.toLowerCase().replace(/\s+/g, '-')
+
+  return (
+    <div className="space-y-1.5">
+      {label && (
+        <label htmlFor={inputId} className="block text-sm font-medium text-neutral-700">
+          {label}
+        </label>
+      )}
+      <textarea
+        id={inputId}
+        className={cn(
+          'w-full px-4 py-3 rounded-xl border border-neutral-300 bg-white text-neutral-900 min-h-[120px]',
+          'placeholder:text-neutral-400',
+          'transition-all duration-200 resize-y',
+          'focus-ring',
+          error && 'border-red-400 focus-visible:ring-red-400',
+          className,
+        )}
+        {...props}
+      />
+      {error && (
+        <p className="text-sm text-red-500">{error}</p>
+      )}
+    </div>
+  )
+}
