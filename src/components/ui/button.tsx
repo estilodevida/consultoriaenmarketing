@@ -1,43 +1,59 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
-
-const buttonVariants = {
-  default: "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-  destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-  outline: "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
-  secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-  ghost: "hover:bg-accent hover:text-accent-foreground",
-  link: "text-primary underline-offset-4 hover:underline",
-};
-
-const buttonSizes = {
-  default: "h-9 px-4 py-2",
-  sm: "h-8 rounded-md px-3 text-xs",
-  lg: "h-10 rounded-md px-8",
-  icon: "h-9 w-9",
-};
+import { cn } from '@/lib/utils'
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: keyof typeof buttonVariants;
-  size?: keyof typeof buttonSizes;
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'accent'
+  size?: 'sm' | 'md' | 'lg' | 'icon' | 'icon'
+  as?: 'button' | 'a'
+  href?: string
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "default", size = "default", ...props }, ref) => {
+const variants = {
+  primary:
+    'bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 shadow-sm hover:shadow-md',
+  secondary:
+    'bg-secondary-600 text-white hover:bg-secondary-700 active:bg-secondary-800 shadow-sm hover:shadow-md',
+  accent:
+    'bg-accent-500 text-white hover:bg-accent-600 active:bg-accent-700 shadow-sm hover:shadow-md',
+  outline:
+    'border-2 border-primary-600 text-primary-700 hover:bg-primary-50 active:bg-primary-100',
+  ghost:
+    'text-primary-700 hover:bg-primary-50 active:bg-primary-100',
+}
+
+const sizes = {
+  sm: 'px-4 py-2 text-sm',
+  md: 'px-6 py-3 text-base',
+  lg: 'px-8 py-4 text-lg',
+  icon: 'w-10 h-10 p-0',
+}
+
+export function Button({
+  variant = 'primary',
+  size = 'md',
+  className,
+  children,
+  as,
+  href,
+  ...props
+}: ButtonProps) {
+  const classes = cn(
+    'inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all duration-200 focus-ring',
+    variants[variant],
+    sizes[size],
+    className,
+  )
+
+  if (as === 'a' && href) {
     return (
-      <button
-        className={cn(
-          "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer",
-          buttonVariants[variant],
-          buttonSizes[size],
-          className
-        )}
-        ref={ref}
-        {...props}
-      />
+      <a href={href} className={classes}>
+        {children}
+      </a>
     )
   }
-)
-Button.displayName = "Button"
 
-export { Button, buttonVariants }
+  return (
+    <button className={classes} {...props}>
+      {children}
+    </button>
+  )
+}

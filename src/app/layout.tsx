@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
+import { Navigation } from "@/components/ui/navigation";
+import { Footer } from "@/components/ui/footer";
+import { ScrollReveal } from "@/components/ui/scroll-reveal";
 import { DynamicChatbot } from "@/components/DynamicChatbot";
 import { siteConfig } from "@/lib/content";
 
@@ -34,10 +35,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
-        <Header />
-        <main className="flex-1">{children}</main>
+    <html lang="es" className={`${inter.variable} antialiased`} data-theme="dark">
+      <body>
+        <Navigation />
+        <ScrollReveal />
+        <main>{children}</main>
         <Footer />
         <DynamicChatbot />
       </body>

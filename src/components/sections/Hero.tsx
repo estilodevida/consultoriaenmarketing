@@ -1,72 +1,56 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { MessageCircle, ArrowRight, Sparkles } from "lucide-react";
+import { HeroCanvas } from "@/components/ui/hero-canvas"
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
-      <div className="absolute top-20 -left-20 w-72 h-72 bg-accent/10 rounded-full blur-3xl" />
-      <div className="absolute -bottom-20 right-20 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-
-      <div className="container relative py-20 md:py-32">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="animate-fade-in-up mb-6 inline-flex items-center gap-2 rounded-full border bg-background px-4 py-1.5 text-sm text-muted-foreground">
-            <Sparkles className="h-4 w-4 text-accent" />
-            Consultoría impulsada por Inteligencia Artificial
-          </div>
-
-          <h1 className="animate-fade-in-up-delay-1 text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1]">
-            Transformamos tu{" "}
-            <span className="bg-gradient-to-r from-accent to-accent/60 bg-clip-text text-transparent">
-              presencia digital
-            </span>{" "}
-            en resultados reales
-          </h1>
-
-          <p className="animate-fade-in-up-delay-2 mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Estrategia, tecnología y creatividad para hacer crecer tu negocio. 
-            Te ayudamos a atraer, convertir y fidelizar clientes con marketing 
-            basado en datos e inteligencia artificial.
-          </p>
-
-          <div className="animate-fade-in-up-delay-3 mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/presupuesto">
-              <Button size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 px-8 text-base">
-                Solicitar Consultoría Gratis
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/servicios">
-              <Button size="lg" variant="outline" className="px-8 text-base">
-                Ver Servicios
-              </Button>
-            </Link>
-          </div>
-
-          <div className="animate-fade-in-up-delay-3 mt-8 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <MessageCircle className="h-4 w-4" />
-            <span>¿Prefieres hablar ahora? </span>
-            <button className="font-medium text-accent hover:underline">
-              Abre nuestro chatbot
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
-          {[
-            { number: "150+", label: "Proyectos exitosos" },
-            { number: "98%", label: "Satisfacción" },
-            { number: "3x", label: "ROI promedio" },
-            { number: "24/7", label: "Soporte continuo" },
-          ].map((stat) => (
-            <div key={stat.label} className="text-center p-4 rounded-xl border bg-background/50 backdrop-blur-sm">
-              <div className="text-2xl md:text-3xl font-bold text-accent">{stat.number}</div>
-              <div className="text-xs text-muted-foreground mt-1">{stat.label}</div>
+    <section className="hero" id="hero">
+      <div className="hero-bg">
+        <HeroCanvas />
+      </div>
+      <div className="w">
+        <div className="hero-grid">
+          <div>
+            <div className="hero-badge">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Consultoría 360° con IA
             </div>
-          ))}
+            <h1>
+              Transformamos tu presencia digital<br />
+              <span className="gradient-text">en resultados reales</span>
+            </h1>
+            <p>
+              Estrategia, automatización con inteligencia artificial, desarrollo web moderno y consultoría estratégica para empresas, emprendedores y autónomos que quieren escalar en internet.
+            </p>
+            <div className="hero-actions">
+              <a href="#contacto" className="cta-btn cta-btn-accent" style={{ padding: '14px 28px', fontSize: '1rem', color: '#000a0a' }}>
+                Solicitar consultoría
+              </a>
+              <a href="#servicios" className="cta-btn cta-btn-accent" style={{ padding: '14px 28px', fontSize: '1rem', color: '#000a0a' }}>
+                Ver servicios
+              </a>
+            </div>
+          </div>
+          <div className="hero-visual">
+            <div className="hero-glass-card">
+              <div className="stat-row">
+                <div className="stat-item"><div className="stat-num">50+</div><div className="stat-lbl">Proyectos exitosos</div></div>
+                <div className="stat-item"><div className="stat-num">95%</div><div className="stat-lbl">Retención clientes</div></div>
+                <div className="stat-item"><div className="stat-num">3×</div><div className="stat-lbl">Crecimiento medio</div></div>
+                <div className="stat-item"><div className="stat-num">12+</div><div className="stat-lbl">Sectores cubiertos</div></div>
+              </div>
+              <div className="stat-div" />
+              <div className="service-tags">
+                <span className="tag">Marketing Digital</span>
+                <span className="tag">SEO & SEM</span>
+                <span className="tag">Desarrollo Web</span>
+                <span className="tag">Automatización IA</span>
+                <span className="tag">Agentes IA</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
-  );
+  )
 }

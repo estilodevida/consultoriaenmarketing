@@ -1,69 +1,132 @@
-import Link from "next/link";
-import { services } from "@/lib/content";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Target, Brain, Layout, TrendingUp, MessageCircle, ArrowRight } from "lucide-react";
-
-const iconMap: Record<string, React.ReactNode> = {
-  Target: <Target className="h-6 w-6" />,
-  Brain: <Brain className="h-6 w-6" />,
-  Layout: <Layout className="h-6 w-6" />,
-  TrendingUp: <TrendingUp className="h-6 w-6" />,
-  MessageCircle: <MessageCircle className="h-6 w-6" />,
-};
-
 export function Servicios() {
   return (
-    <section id="servicios" className="py-20 md:py-28">
-      <div className="container">
-        <div className="text-center max-w-2xl mx-auto mb-14">
-          <Badge variant="outline" className="mb-4">
-            Nuestros Servicios
-          </Badge>
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
-            Soluciones completas para tu negocio
-          </h2>
-          <p className="mt-4 text-muted-foreground">
-            Cada servicio está diseñado para generar resultados medibles. 
-            Combinamos estrategia, tecnología y creatividad para impulsar tu crecimiento.
-          </p>
+    <section id="servicios">
+      <div className="w">
+        <div className="reveal">
+          <div className="section-label">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+              <line x1="8" y1="21" x2="16" y2="21" />
+              <line x1="12" y1="17" x2="12" y2="21" />
+            </svg>
+            Nuestros servicios
+          </div>
+          <h2 className="section-title">Soluciones <span className="gradient-text">360° de marketing digital</span></h2>
+          <p className="section-sub">Cubrimos cada aspecto de tu presencia online: desde la estrategia hasta la ejecución técnica, potenciado con inteligencia artificial.</p>
         </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {services.map((service) => (
-            <Card key={service.id} className="group border bg-card hover:border-accent/50 transition-all duration-300 hover:shadow-lg hover:shadow-accent/5">
-              <CardHeader>
-                <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center text-accent group-hover:scale-110 transition-transform">
-                  {iconMap[service.icon]}
-                </div>
-                <CardTitle className="mt-4 text-xl">{service.title}</CardTitle>
-                <CardDescription className="text-sm">
-                  {service.description}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {service.features.map((feature) => (
-                    <li key={feature} className="text-sm text-muted-foreground flex items-start gap-2">
-                      <span className="text-accent mt-0.5">&#x2022;</span>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <div className="text-center mt-10">
-          <Link
-            href="/servicios"
-            className="inline-flex items-center gap-2 text-sm font-medium text-accent hover:text-accent/80 transition-colors"
-          >
-            Ver todos los servicios <ArrowRight className="h-4 w-4" />
-          </Link>
+        <div className="services-grid">
+          <div className="s-card reveal reveal-delay-1">
+            <div className="icon-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </div>
+            <h3>Marketing Digital 360°</h3>
+            <p>Estrategias integrales multicanal para aumentar tu visibilidad online, atraer tráfico cualificado y convertir visitantes en clientes.</p>
+            <a href="#contacto" className="learn-more">
+              Más info
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </a>
+          </div>
+          <div className="s-card reveal reveal-delay-2">
+            <div className="icon-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+            </div>
+            <h3>SEO y SEM</h3>
+            <p>Optimización orgánica en buscadores y campañas pagadas rentables. Aparece en los primeros resultados cuando tu cliente te busca.</p>
+            <a href="#contacto" className="learn-more">
+              Más info
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </a>
+          </div>
+          <div className="s-card reveal reveal-delay-3">
+            <div className="icon-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                <line x1="8" y1="21" x2="16" y2="21" />
+                <line x1="12" y1="17" x2="12" y2="21" />
+              </svg>
+            </div>
+            <h3>Desarrollo Web</h3>
+            <p>Sitios modernos con Next.js, ultrarrápidos y optimizados para conversión. Diseño responsive, SEO técnico y experiencia de usuario premium.</p>
+            <a href="#contacto" className="learn-more">
+              Más info
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </a>
+          </div>
+          <div className="s-card reveal reveal-delay-1">
+            <div className="icon-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="16 3 21 3 21 8" />
+                <line x1="4" y1="20" x2="21" y2="3" />
+                <polyline points="21 16 21 21 16 21" />
+                <line x1="15" y1="15" x2="21" y2="21" />
+                <line x1="4" y1="4" x2="9" y2="9" />
+              </svg>
+            </div>
+            <h3>Automatización con IA</h3>
+            <p>Automatiza procesos de marketing y ventas con inteligencia artificial. Email marketing, segmentación, lead scoring y más, sin esfuerzo manual.</p>
+            <a href="#contacto" className="learn-more">
+              Más info
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </a>
+          </div>
+          <div className="s-card reveal reveal-delay-2">
+            <div className="icon-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a10 10 0 0 1 10 10c0 2.76-1.12 5.26-2.93 7.07L12 22l-7.07-7.07A10 10 0 0 1 2 12 10 10 0 0 1 12 2z" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+            </div>
+            <h3>Agentes de IA</h3>
+            <p>Implementamos agentes inteligentes que automatizan tareas repetitivas, atención al cliente 24/7, generación de contenido y análisis de datos.</p>
+            <a href="#contacto" className="learn-more">
+              Más info
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </a>
+          </div>
+          <div className="s-card reveal reveal-delay-3">
+            <div className="icon-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="4" y1="21" x2="4" y2="14" />
+                <line x1="9" y1="21" x2="9" y2="10" />
+                <line x1="14" y1="21" x2="14" y2="6" />
+                <line x1="19" y1="21" x2="19" y2="2" />
+              </svg>
+            </div>
+            <h3>Consultoría Estratégica</h3>
+            <p>Análisis profundo de tu negocio, definición de hoja de ruta personalizada y acompañamiento continuo para alcanzar tus objetivos digitales.</p>
+            <a href="#contacto" className="learn-more">
+              Más info
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </a>
+          </div>
         </div>
       </div>
     </section>
-  );
+  )
 }
