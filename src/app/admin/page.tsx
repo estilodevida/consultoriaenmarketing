@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import {
   Users,
   LogOut,
   Bot,
+  Image,
 } from "lucide-react";
 
 const ADMIN_PASSWORD = "admin123";
@@ -75,10 +77,12 @@ export default function AdminPage() {
 }
 
 function AdminDashboard() {
+  const [bannerRefreshKey, setBannerRefreshKey] = useState(0);
+
   return (
     <section className="py-8 md:py-12">
       <div className="container max-w-6xl">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold">Panel de Administración</h1>
             <p className="text-sm text-muted-foreground">
@@ -89,6 +93,15 @@ function AdminDashboard() {
             <LogOut className="h-4 w-4 mr-2" />
             Cerrar sesión
           </Button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 mb-6 pb-4 border-b">
+          <Link href="/admin/airbnb">
+            <Button variant="accent" size="sm" className="gap-2">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              Airbnb KPIs
+            </Button>
+          </Link>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -122,6 +135,10 @@ function AdminDashboard() {
             <TabsTrigger value="quotes">
               <FileText className="h-4 w-4 mr-2" />
               Presupuestos
+            </TabsTrigger>
+            <TabsTrigger value="banner">
+              <Image className="h-4 w-4 mr-2" />
+              Banner
             </TabsTrigger>
             <TabsTrigger value="analytics">
               <TrendingUp className="h-4 w-4 mr-2" />
@@ -188,8 +205,205 @@ function AdminDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="banner">
+            <BannerManager
+              key={bannerRefreshKey}
+              onBannerChange={() => setBannerRefreshKey((k) => k + 1)}
+            />
+          </TabsContent>
         </Tabs>
       </div>
     </section>
+  );
+}
+
+interface Banner {
+  desktop_url: string;
+  mobile_url: string;
+  target: "affiliate" | "client";
+  active: boolean;
+  created_at: string;
+}
+
+function BannerManager({ onBannerChange }: { onBannerChange: () => void }) {
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const fetchBanners = async () => {
+    try {
+      const res = await fetch("/api/admin/banners");
+      const data = await res.json();
+      setBanners(data.banners || []);
+    } catch {
+      setBanners([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchBanners();
+  }, []);
+
+  const handleUpload = async (target: "affiliate" | "client", e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setUploading(true);
+    setMessage(null);
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    formData.set("target", target);
+
+    try {
+      const res = await fetch("/api/admin/banners", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.error) {
+        setMessage({ type: "error", text: data.error });
+      } else {
+        setMessage({ type: "success", text: "Banner actualizado correctamente" });
+        await fetchBanners();
+        onBannerChange();
+      }
+    } catch {
+      setMessage({ type: "error", text: "Error al subir el banner" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (target: "affiliate" | "client") => {
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/banners", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setMessage({ type: "error", text: data.error });
+      } else {
+        setMessage({ type: "success", text: "Banner eliminado correctamente" });
+        await fetchBanners();
+        onBannerChange();
+      }
+    } catch {
+      setMessage({ type: "error", text: "Error al eliminar el banner" });
+    }
+  };
+
+  const renderBannerCard = (target: "affiliate" | "client") => {
+    const label = target === "affiliate" ? "Afiliados" : "Clientes";
+    const banner = banners.find((b) => b.target === target);
+
+    return (
+      <Card key={target}>
+        <CardHeader>
+          <CardTitle>Banner para {label}</CardTitle>
+          <CardDescription>
+            Sube las imágenes para el dashboard de {label.toLowerCase()}.
+            <br />
+            <strong>Desktop:</strong> horizontal (1920×400px recomendado) &middot;
+            <strong> Móvil:</strong> vertical (750×1334px recomendado).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {banner && (
+            <div className="mb-4 space-y-2">
+              <p className="text-sm font-medium">Banner actual:</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Desktop</p>
+                  <img
+                    src={banner.desktop_url}
+                    alt="Desktop preview"
+                    className="w-full h-32 object-cover rounded border"
+                  />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Móvil</p>
+                  <img
+                    src={banner.mobile_url}
+                    alt="Mobile preview"
+                    className="w-full h-32 object-contain rounded border"
+                  />
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDelete(target)}
+                className="border-red-500 text-red-500 hover:bg-red-500/10"
+              >
+                Eliminar banner
+              </Button>
+            </div>
+          )}
+
+          <form onSubmit={(e) => handleUpload(target, e)} className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Imagen Desktop (horizontal, 1920×400px recomendado)
+              </label>
+              <Input
+                type="file"
+                name="desktop"
+                accept="image/*"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Imagen Móvil (vertical, 750×1334px recomendado)
+              </label>
+              <Input
+                type="file"
+                name="mobile"
+                accept="image/*"
+                required
+              />
+            </div>
+            <Button type="submit" disabled={uploading}>
+              {uploading ? "Subiendo..." : "Subir banner"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Gestión de Banners</CardTitle>
+          <CardDescription>
+            Administra los banners que se muestran en los dashboards de afiliados y clientes.
+            Cada banner tiene dos versiones: una para escritorio (horizontal) y otra para móvil (vertical).
+            El sistema detecta automáticamente el dispositivo y muestra la imagen correspondiente.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      {message && (
+        <div
+          className={`p-4 rounded-lg text-sm ${
+            message.type === "success"
+              ? "bg-green-500/10 text-green-500 border border-green-500/20"
+              : "bg-red-500/10 text-red-500 border border-red-500/20"
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
+
+      <div className="grid gap-6">
+        {renderBannerCard("affiliate")}
+        {renderBannerCard("client")}
+      </div>
+    </div>
   );
 }

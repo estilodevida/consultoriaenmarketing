@@ -8,13 +8,14 @@ const cspDirectives = {
     'https://m.stripe.network',
   ],
   'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-  'img-src': ["'self'", 'data:', 'blob:', 'https://*.stripe.com'],
+  'img-src': ["'self'", 'data:', 'blob:', 'https://*.stripe.com', 'http://localhost:8000'],
   'font-src': ["'self'", 'data:', 'https://fonts.gstatic.com', 'https://fonts.googleapis.com'],
   'connect-src': [
     "'self'",
     'https://api.stripe.com',
     'https://*.supabase.co',
     'wss://*.supabase.co',
+    'http://localhost:8000',
   ],
   'frame-src': [
     "'self'",
@@ -35,7 +36,7 @@ const formatCsp = (directives) =>
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // output: 'standalone',
+  output: 'standalone',
   images: {
     remotePatterns: [
       {
