@@ -245,35 +245,6 @@ function BannerManager({ onBannerChange }: { onBannerChange: () => void }) {
     fetchBanners();
   }, []);
 
-  const handleUpload = async (target: "affiliate" | "client", e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setUploading(true);
-    setMessage(null);
-
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-    formData.set("target", target);
-
-    try {
-      const res = await fetch("/api/admin/banners", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.error) {
-        setMessage({ type: "error", text: data.error });
-      } else {
-        setMessage({ type: "success", text: "Banner actualizado correctamente" });
-        await fetchBanners();
-        onBannerChange();
-      }
-    } catch {
-      setMessage({ type: "error", text: "Error al subir el banner" });
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleDelete = async (target: "affiliate" | "client") => {
     setMessage(null);
     try {
@@ -295,9 +266,66 @@ function BannerManager({ onBannerChange }: { onBannerChange: () => void }) {
     }
   };
 
+  const [desktopPreview, setDesktopPreview] = useState<Record<string, { desktop: string | null; mobile: string | null }>>({});
+  const [desktopFiles, setDesktopFiles] = useState<Record<string, { desktop: File | null; mobile: File | null }>>({});
+
+  const handleDrop = (target: string, field: "desktop" | "mobile", file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setDesktopPreview((prev) => ({
+        ...prev,
+        [target]: { ...prev[target], [field]: e.target?.result as string },
+      }));
+    };
+    reader.readAsDataURL(file);
+    setDesktopFiles((prev) => ({
+      ...prev,
+      [target]: { ...prev[target], [field]: file },
+    }));
+  };
+
+  const handleSubmitUpload = async (target: "affiliate" | "client") => {
+    const files = desktopFiles[target];
+    if (!files?.desktop || !files?.mobile) {
+      setMessage({ type: "error", text: "Debes seleccionar ambas imágenes" });
+      return;
+    }
+
+    setUploading(true);
+    setMessage(null);
+
+    const formData = new FormData();
+    formData.set("target", target);
+    formData.set("desktop", files.desktop);
+    formData.set("mobile", files.mobile);
+
+    try {
+      const res = await fetch("/api/admin/banners", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.error) {
+        setMessage({ type: "error", text: data.error });
+      } else {
+        setMessage({ type: "success", text: "Banner actualizado correctamente" });
+        setDesktopPreview((prev) => ({ ...prev, [target]: { desktop: null, mobile: null } }));
+        setDesktopFiles((prev) => ({ ...prev, [target]: { desktop: null, mobile: null } }));
+        await fetchBanners();
+        onBannerChange();
+      }
+    } catch {
+      setMessage({ type: "error", text: "Error al subir el banner" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const renderBannerCard = (target: "affiliate" | "client") => {
     const label = target === "affiliate" ? "Afiliados" : "Clientes";
     const banner = banners.find((b) => b.target === target);
+    const dp = desktopPreview[target];
+    const df = desktopFiles[target];
 
     return (
       <Card key={target}>
@@ -343,37 +371,86 @@ function BannerManager({ onBannerChange }: { onBannerChange: () => void }) {
             </div>
           )}
 
-          <form onSubmit={(e) => handleUpload(target, e)} className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Imagen Desktop (horizontal, 1920×400px recomendado)
-              </label>
-              <Input
-                type="file"
-                name="desktop"
-                accept="image/*"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Imagen Móvil (vertical, 750×1334px recomendado)
-              </label>
-              <Input
-                type="file"
-                name="mobile"
-                accept="image/*"
-                required
-              />
-            </div>
-            <Button type="submit" disabled={uploading}>
-              {uploading ? "Subiendo..." : "Subir banner"}
-            </Button>
-          </form>
+          <div className="space-y-4">
+            <DropZone
+              label="Imagen Desktop (horizontal, 1920×400px)"
+              preview={dp?.desktop}
+              onDrop={(file) => handleDrop(target, "desktop", file)}
+            />
+            <DropZone
+              label="Imagen Móvil (vertical, 750×1334px)"
+              preview={dp?.mobile}
+              onDrop={(file) => handleDrop(target, "mobile", file)}
+            />
+            {df?.desktop && df?.mobile && (
+              <Button onClick={() => handleSubmitUpload(target)} disabled={uploading}>
+                {uploading ? "Subiendo..." : "Subir banner"}
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     );
   };
+
+  function DropZone({ label, preview, onDrop }: { label: string; preview: string | null; onDrop: (file: File) => void }) {
+    const [dragging, setDragging] = useState(false);
+    const inputRef = useState<HTMLInputElement | null>(null);
+
+    const handleDragOver = (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragging(true);
+    };
+    const handleDragLeave = (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragging(false);
+    };
+    const handleDropEvent = (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragging(false);
+      const file = e.dataTransfer.files?.[0];
+      if (file && file.type.startsWith("image/")) onDrop(file);
+    };
+    const handleClick = () => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.onchange = (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) onDrop(file);
+      };
+      input.click();
+    };
+
+    return (
+      <div>
+        <label className="block text-sm font-medium mb-1">{label}</label>
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDropEvent}
+          onClick={handleClick}
+          className={`relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+            dragging
+              ? "border-accent bg-accent/5"
+              : "border-border hover:border-accent/50"
+          }`}
+        >
+          {preview ? (
+            <img src={preview} alt="Preview" className="max-h-40 mx-auto object-contain rounded" />
+          ) : (
+            <div className="text-muted-foreground">
+              <svg className="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p className="text-sm">Arrastra y suelta la imagen aquí</p>
+              <p className="text-xs mt-1">o haz clic para seleccionar</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
