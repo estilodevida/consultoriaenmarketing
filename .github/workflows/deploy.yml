@@ -18,8 +18,16 @@ jobs:
           cache: 'npm'
 
       - run: npm ci
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNzc0MzAxNTc1LCJleHAiOjIwODk2NjE1NzV9.IrKsAtdDOXxtXKh51kLR00lGEy7RBDqNeRO3uLs52Co' }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:8000' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc0MzAxNTc1LCJleHAiOjIwODk2NjE1NzV9.OBg0weepq5HknDCBlxWN-zZjSgVAKABWjLAfjW8k5ac' }}
 
       - run: npm run build
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNzc0MzAxNTc1LCJleHAiOjIwODk2NjE1NzV9.IrKsAtdDOXxtXKh51kLR00lGEy7RBDqNeRO3uLs52Co' }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:8000' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc0MzAxNTc1LCJleHAiOjIwODk2NjE1NzV9.OBg0weepq5HknDCBlxWN-zZjSgVAKABWjLAfjW8k5ac' }}
 
       - name: Deploy via SSH
         uses: appleboy/scp-action@v0.1.7
