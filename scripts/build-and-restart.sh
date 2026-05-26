@@ -6,6 +6,11 @@ cd "$(dirname "$0")/.."
 echo "=== Building Next.js ==="
 npm run build
 
+echo "=== Copying static files to standalone ==="
+rm -rf .next/standalone/.next/static
+cp -r .next/static .next/standalone/.next/static
+echo "✓ Static files copied to standalone"
+
 echo "=== Restarting PM2 process ==="
 pm2 restart consultoriaenmarketing
 
@@ -23,14 +28,18 @@ for i in $(seq 1 30); do
 done
 
 echo "=== Verifying static assets ==="
-CSS_HASH=$(grep -oP '/_next/static/css/\K[a-f0-9]+(?=\.css)' .next/BUILD_ID 2>/dev/null || true)
+CSS_HASH=$(find .next/static/css -name '*.css' -type f -exec basename {} \; | sed 's/\.css$//' | head -1)
 if [ -n "$CSS_HASH" ]; then
-  CSS_FILE=".next/static/css/${CSS_HASH}.css"
-  if [ -f "$CSS_FILE" ]; then
-    echo "✓ CSS asset found: $CSS_FILE"
+  CSS_FILE_STANDALONE=".next/standalone/.next/static/css/${CSS_HASH}.css"
+  CSS_FILE_MAIN=".next/static/css/${CSS_HASH}.css"
+  if [ -f "$CSS_FILE_STANDALONE" ]; then
+    echo "✓ CSS asset in standalone: $CSS_FILE_STANDALONE"
   else
-    echo "✗ CSS asset not found: $CSS_FILE"
+    echo "✗ CSS asset not found in standalone: $CSS_FILE_STANDALONE"
     exit 1
+  fi
+  if [ -f "$CSS_FILE_MAIN" ]; then
+    echo "✓ CSS asset in main build: $CSS_FILE_MAIN"
   fi
 fi
 

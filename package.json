@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && rm -rf .next/standalone/.next/static && cp -r .next/static .next/standalone/.next/static && echo '✓ Static files copied to standalone'",
     "start": "next start",
     "lint": "eslint",
     "deploy": "bash scripts/build-and-restart.sh"

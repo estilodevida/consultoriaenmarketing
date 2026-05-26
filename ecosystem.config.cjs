@@ -1,8 +1,7 @@
 module.exports = {
   apps: [{
     name: 'consultoriaenmarketing',
-    script: 'node_modules/next/dist/bin/next',
-    args: 'start',
+    script: '.next/standalone/server.js',
     cwd: '/home/ubuntu/consultoriaenmarketing',
     env: {
       NODE_ENV: 'production',
