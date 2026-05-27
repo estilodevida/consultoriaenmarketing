@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { services, faqs, siteConfig } from "@/lib/content";
+import { supabase } from "@/lib/supabase";
 
-const systemPrompt = `Eres un asistente virtual de la agencia "${siteConfig.name}". 
+const systemPrompt = `Eres un asistente virtual de la agencia "${siteConfig.name}".
 Tu personalidad es profesional, cercana y servicial. Ayudas a los visitantes del sitio web con:
 
 1. Información sobre nuestros servicios de consultoría en marketing
@@ -16,80 +17,135 @@ ${services.map((s) => `- ${s.title}: ${s.description}`).join("\n")}
 Preguntas frecuentes:
 ${faqs.map((f) => `- Q: ${f.question}\n  A: ${f.answer}`).join("\n")}
 
-Sé conciso pero completo. Si el usuario muestra interés en contratar un servicio, 
-anímalo a solicitar un presupuesto formal. Si pregunta por precios, indica que cada 
+IMPORTANTE - FLUJO DE CALIFICACIÓN DE LEADS:
+Tu objetivo principal es calificar al prospecto. Después de saludar, haz preguntas para entender:
+1. ¿Qué tipo de negocio o proyecto tiene?
+2. ¿Qué objetivos de marketing busca alcanzar? (más clientes, branding, ventas online, etc.)
+3. ¿Qué presupuesto aproximado maneja?
+4. ¿En qué plazo necesita resultados?
+5. ¿Qué servicios concretos le interesan más de los que ofrecemos?
+
+Haz estas preguntas de forma natural y conversacional, una o dos a la vez. No las sueltes todas de golpe.
+Cuando tengas suficiente información, sugiérele agendar una consultoría gratuita o solicitar un presupuesto personalizado.
+
+Sé conciso pero completo. Si el usuario muestra interés en contratar un servicio,
+anímalo a solicitar un presupuesto formal. Si pregunta por precios, indica que cada
 proyecto es personalizado y que podemos darle un presupuesto exacto tras una breve consulta.
 
-NUNCA inventes información que no esté en el contexto. Si no sabes algo, 
+NUNCA inventes información que no esté en el contexto. Si no sabes algo,
 indica que te pondrás en contacto con el equipo para responderle.
 
 Responde SIEMPRE en español.`;
 
 export async function POST(req: Request) {
   try {
-    const { message, history } = await req.json();
+    const body = await req.json();
+    const { action, lead, message, history } = body;
 
-    if (!message || typeof message !== "string") {
-      return NextResponse.json(
-        { response: "Por favor, escribe un mensaje válido." },
-        { status: 400 }
-      );
+    // --- Save lead action ---
+    if (action === "save_lead") {
+      if (!lead?.name || !lead?.email || !lead?.phone) {
+        return NextResponse.json(
+          { error: "Nombre, email y teléfono son requeridos" },
+          { status: 400 }
+        );
+      }
+
+      const { error } = await supabase.from("leads").insert({
+        name: lead.name.trim(),
+        email: lead.email.trim(),
+        phone: lead.phone.trim(),
+        source: "chatbot",
+        metadata: {},
+      });
+
+      if (error) {
+        console.error("Supabase insert error:", error);
+        return NextResponse.json(
+          { error: "Error al guardar los datos" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ success: true });
     }
 
-    const context = [
-      { role: "system", content: systemPrompt },
-      ...(history || []).slice(-10).map((m: { role: string; content: string }) => ({
-        role: m.role === "user" ? "user" : "assistant",
-        content: m.content,
-      })),
-      { role: "user", content: message },
-    ];
+    // --- Chat action ---
+    if (action === "chat") {
+      if (!message || typeof message !== "string") {
+        return NextResponse.json(
+          { response: "Por favor, escribe un mensaje válido." },
+          { status: 400 }
+        );
+      }
 
-    // Check for API keys - Priority: OpenAI > DeepSeek
-    const openAiModel = process.env.LLM_MODEL || "gpt-4o-mini";
-    const deepSeekModel = process.env.LLM_MODEL || "deepseek-chat";
-    const deepSeekBaseUrl = process.env.DEEPSEEK_API_BASE_URL || "https://api.deepseek.com/v1";
-    const maxTokens = 500;
-    const temperature = 0.7;
-    let response: string;
+      // Build context with lead info for qualification
+      const leadContext = lead
+        ? `\n\nInformación del prospecto:\n- Nombre: ${lead.name}\n- Email: ${lead.email}\n- Teléfono: ${lead.phone}\n\nUsa esta información para personalizar la conversación. Ya tienes sus datos de contacto, así que no se los pidas de nuevo. Céntrate en calificar sus necesidades.`
+        : "";
 
-    if (process.env.OPENAI_API_KEY) {
-      const { default: OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const context = [
+        { role: "system", content: systemPrompt + leadContext },
+        ...(history || []).slice(-10).map(
+          (m: { role: string; content: string }) => ({
+            role: m.role === "user" ? "user" : "assistant",
+            content: m.content,
+          })
+        ),
+        { role: "user", content: message },
+      ];
 
-      const completion = await openai.chat.completions.create({
-        model: openAiModel,
-        messages: context,
-        max_tokens: maxTokens,
-        temperature,
-      });
+      const openAiModel = process.env.LLM_MODEL || "gpt-4o-mini";
+      const deepSeekModel = process.env.LLM_MODEL || "deepseek-chat";
+      const deepSeekBaseUrl =
+        process.env.DEEPSEEK_API_BASE_URL || "https://api.deepseek.com/v1";
+      const maxTokens = 500;
+      const temperature = 0.7;
+      let response: string;
 
-      response =
-        completion.choices[0]?.message?.content ||
-        "Lo siento, no pude procesar tu solicitud. ¿Puedes intentarlo de nuevo?";
-    } else if (process.env.DEEPSEEK_API_KEY) {
-      const { default: OpenAI } = await import("openai");
-      const deepseek = new OpenAI({
-        apiKey: process.env.DEEPSEEK_API_KEY,
-        baseURL: deepSeekBaseUrl,
-      });
+      if (process.env.OPENAI_API_KEY) {
+        const { default: OpenAI } = await import("openai");
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-      const completion = await deepseek.chat.completions.create({
-        model: deepSeekModel,
-        messages: context,
-        max_tokens: maxTokens,
-        temperature,
-      });
+        const completion = await openai.chat.completions.create({
+          model: openAiModel,
+          messages: context,
+          max_tokens: maxTokens,
+          temperature,
+        });
 
-      response =
-        completion.choices[0]?.message?.content ||
-        "Lo siento, no pude procesar tu solicitud. ¿Puedes intentarlo de nuevo?";
-    } else {
-      // Fallback response without AI API
-      response = generateFallbackResponse(message);
+        response =
+          completion.choices[0]?.message?.content ||
+          "Lo siento, no pude procesar tu solicitud. ¿Puedes intentarlo de nuevo?";
+      } else if (process.env.DEEPSEEK_API_KEY) {
+        const { default: OpenAI } = await import("openai");
+        const deepseek = new OpenAI({
+          apiKey: process.env.DEEPSEEK_API_KEY,
+          baseURL: deepSeekBaseUrl,
+        });
+
+        const completion = await deepseek.chat.completions.create({
+          model: deepSeekModel,
+          messages: context,
+          max_tokens: maxTokens,
+          temperature,
+        });
+
+        response =
+          completion.choices[0]?.message?.content ||
+          "Lo siento, no pude procesar tu solicitud. ¿Puedes intentarlo de nuevo?";
+      } else {
+        // Fallback without AI - includes qualification questions
+        response = generateFallbackResponse(message, lead);
+      }
+
+      return NextResponse.json({ response });
     }
 
-    return NextResponse.json({ response });
+    return NextResponse.json(
+      { error: "Acción no válida" },
+      { status: 400 }
+    );
   } catch (error) {
     console.error("Chat error:", error);
     return NextResponse.json(
@@ -103,62 +159,81 @@ export async function POST(req: Request) {
   }
 }
 
-function generateFallbackResponse(message: string): string {
+function generateFallbackResponse(
+  message: string,
+  lead?: { name: string; email: string; phone: string }
+): string {
   const msg = message.toLowerCase();
+  const name = lead?.name || "";
 
-  if (msg.includes("servicio") || msg.includes("hacen") || msg.includes("ofrecen")) {
+  if (
+    msg.includes("servicio") ||
+    msg.includes("hacen") ||
+    msg.includes("ofrecen")
+  ) {
     return (
-      `Ofrecemos los siguientes servicios de consultoría en marketing:\n\n` +
+      `Claro${name ? ` ${name.split(" ")[0]}` : ""}, estos son nuestros servicios:\n\n` +
       services
         .map((s) => `🔹 *${s.title}*: ${s.description}`)
         .join("\n\n") +
-      `\n\n¿Te gustaría saber más sobre alguno de ellos? Puedo darte más detalles o ayudarte a solicitar un presupuesto personalizado.`
+      `\n\n¿Cuál de ellos te interesa más? Así puedo darte información más detallada.`
     );
   }
 
-  if (msg.includes("precio") || msg.includes("cuest") || msg.includes("presupuesto") || msg.includes("tarifa") || msg.includes("cost")) {
+  if (
+    msg.includes("precio") ||
+    msg.includes("cuest") ||
+    msg.includes("presupuesto") ||
+    msg.includes("tarifa") ||
+    msg.includes("cost")
+  ) {
     return (
       `Cada proyecto es único y lo adaptamos a las necesidades específicas de cada cliente. ` +
       `Para darte un presupuesto preciso, necesito entender mejor tu proyecto.\n\n` +
-      `¿Te gustaría solicitar una consultoría gratuita? Así podemos conocer tu negocio y darte ` +
-      `un presupuesto personalizado sin compromiso. Puedes hacerlo directamente desde nuestro ` +
-      `[formulario de presupuesto](/presupuesto) o contarme más sobre tu proyecto aquí mismo.`
+      `Cuéntame un poco más: ¿qué tipo de negocio tienes y qué objetivos de marketing te gustaría alcanzar?`
     );
   }
 
-  if (msg.includes("contacto") || msg.includes("hablar") || msg.includes("persona")) {
+  if (
+    msg.includes("contacto") ||
+    msg.includes("hablar") ||
+    msg.includes("persona")
+  ) {
     return (
       `Puedes contactarnos a través de:\n\n` +
       `📧 Email: ${siteConfig.email}\n` +
       `📞 Teléfono: ${siteConfig.phone}\n` +
       `📍 Dirección: ${siteConfig.address}\n\n` +
-      `También puedes dejar tus datos en nuestro [formulario de contacto](/contacto) y te llamaremos lo antes posible.`
+      `También puedes agendar una consultoría gratuita y te llamamos sin compromiso.`
     );
   }
 
-  if (msg.includes("hola") || msg.includes("buen") || msg.includes("saludos")) {
+  if (
+    msg.includes("hola") ||
+    msg.includes("buen") ||
+    msg.includes("saludos")
+  ) {
     return (
-      `¡Hola! 👋 Encantado de saludarte. Soy el asistente virtual de ${siteConfig.name}. ` +
-      `¿En qué puedo ayudarte hoy? Puedo informarte sobre nuestros servicios, ayudarte con un ` +
-      `presupuesto o resolver cualquier duda que tengas.`
+      `¡Hola${name ? ` ${name.split(" ")[0]}` : ""}! 👋 ` +
+      `Para poder ayudarte mejor, cuéntame un poco sobre tu proyecto. ` +
+      `¿Qué tipo de negocio tienes y qué te gustaría mejorar en tu marketing?`
     );
   }
 
   if (msg.includes("gracias") || msg.includes("vale") || msg.includes("ok")) {
     return (
-      `¡De nada! 😊 Si tienes cualquier otra pregunta, no dudes en escribirme. ` +
-      `También puedes solicitar una consultoría gratuita en cualquier momento.`
+      `¡De nada! 😊 ¿Hay algo más en lo que pueda ayudarte?` +
+      (lead
+        ? ` Recuerda que tienes a tu disposición una consultoría gratuita sin compromiso.`
+        : "")
     );
   }
 
+  // Default with qualification
   return (
-    `Gracias por tu mensaje. Para poder ayudarte mejor, ¿podrías contarme un poco más sobre ` +
-    `lo que necesitas?\n\n` +
-    `Por ejemplo, puedes preguntarme sobre:\n` +
-    `🔹 Nuestros servicios de marketing digital\n` +
-    `🔹 Presupuestos y tarifas\n` +
-    `🔹 Cómo contactarnos\n` +
-    `🔹 Cómo funciona nuestra metodología de trabajo\n\n` +
-    `¡Estoy aquí para ayudarte!`
+    `Gracias por tu mensaje${name ? ` ${name.split(" ")[0]}` : ""}. Para poder asesorarte mejor, me gustaría conocer:\n\n` +
+    `🔹 ¿Qué tipo de negocio o proyecto tienes?\n` +
+    `🔹 ¿Qué objetivos de marketing te gustaría alcanzar?\n\n` +
+    `Así puedo orientarte hacia el servicio que mejor se adapte a ti. ¡Cuéntame!`
   );
 }

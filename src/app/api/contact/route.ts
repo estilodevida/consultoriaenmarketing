@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { siteConfig } from "@/lib/content";
+import { supabase } from "@/lib/supabase";
 
 export async function POST(req: Request) {
   try {
@@ -13,16 +13,26 @@ export async function POST(req: Request) {
       );
     }
 
-    // Store in database or send email
-    // For MVP, log to console
-    console.log(`[${type || "contact"}] New submission from ${name} (${email}):`, {
-      phone,
-      service,
-      message,
+    // Store in Supabase
+    const { error } = await supabase.from("leads").insert({
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone?.trim() || null,
+      source: type === "presupuesto" ? "presupuesto" : "contacto",
+      metadata: {
+        service: service || null,
+        message: message.trim(),
+        submitted_at: new Date().toISOString(),
+      },
     });
 
-    // TODO: Send email notification
-    // TODO: Store in Supabase
+    if (error) {
+      console.error("Contact Supabase error:", error);
+      return NextResponse.json(
+        { error: "Error al guardar tu solicitud. Intenta de nuevo." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
