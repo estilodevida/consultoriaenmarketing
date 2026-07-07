@@ -1,0 +1,397 @@
+{
+  "name": "Gesti\u00f3n de Citas - Chatbot v2 (CON-181)",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chatbot-cita-v2",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "95bb6527-1b09-4187-9ec3-233949e912b9",
+      "name": "Webhook Cita v2",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        180,
+        360
+      ],
+      "webhookId": "con-181-chatbot-cita-v2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = items[0].json;\nconst body = raw.body || raw;\n\nconst appt = body.appointment || {};\nconst leadName = appt.lead_name || body.nombre || body.name || '';\nconst email = (appt.lead_email || body.email || '').toString().trim();\nconst phone = (appt.lead_phone || body.telefono || body.phone || '').toString().trim();\nconst startAt = appt.start_at || body.fecha_hora || body.datetime || '';\nconst endAt = appt.end_at || '';\nconst tz = appt.timezone || body.timezone || 'Europe/Madrid';\nconst reason = appt.reason || body.motivo || body.reason || 'Consulta inicial';\nconst durationMin = appt.duration_minutes || body.duration_minutes || 30;\nconst apptId = appt.id || '';\nconst icsUid = appt.ics_uid || '';\n\nconst errors = [];\nif (!leadName) errors.push('lead_name');\nif (!email && !phone) errors.push('lead_email o lead_phone');\nif (!startAt) errors.push('start_at');\n\nlet isoStart = '';\nlet isoEnd = '';\nlet fechaFormateada = '';\ntry {\n  const dStart = new Date(startAt);\n  if (isNaN(dStart.getTime())) {\n    errors.push('start_at_invalid');\n  } else {\n    isoStart = dStart.toISOString();\n    const dEnd = endAt ? new Date(endAt) : new Date(dStart.getTime() + (Number(durationMin) || 30) * 60000);\n    isoEnd = isNaN(dEnd.getTime()) ? new Date(dStart.getTime() + 30 * 60000).toISOString() : dEnd.toISOString();\n    fechaFormateada = new Intl.DateTimeFormat('es-ES', {\n      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',\n      hour: '2-digit', minute: '2-digit', timeZone: tz, hour12: false\n    }).format(dStart);\n  }\n} catch (e) { errors.push('start_at_invalid'); }\n\nif (errors.length > 0) {\n  return [{ json: { error: true, mensaje: 'Faltan campos o son inv\u00e1lidos: ' + errors.join(', '), campos_recibidos: Object.keys(body) } }];\n}\n\nconst site = body.site || {};\nreturn [{\n  json: {\n    error: false,\n    appointment_id: apptId,\n    ics_uid: icsUid,\n    nombre: leadName,\n    email: email,\n    telefono: phone,\n    motivo: reason,\n    empresa: body.empresa || '',\n    fecha_hora: startAt,\n    fecha_iso: isoStart,\n    fecha_fin_iso: isoEnd,\n    fecha_formateada: fechaFormateada,\n    timezone: tz,\n    duration_min: Number(durationMin) || 30,\n    site_name: site.name || 'Consultor\u00eda en Marketing',\n    site_url: site.url || 'https://consultoriaenmarketing.com',\n    admin_email: site.admin_email || 'admin@consultoriaenmarketing.com',\n    crm_base_url: (body.crm && body.crm.base_url) || 'https://crm.cl1.nl'\n  }\n}];"
+      },
+      "id": "d79c6581-10a7-40c2-a0d2-a30be4022ce3",
+      "name": "Normalizar Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "rightValue": ""
+          },
+          "conditions": [
+            {
+              "id": "cond-valid",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "014dc1f8-a5ce-4e6b-bc3a-126b8953560b",
+      "name": "\u00bfDatos inv\u00e1lidos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        620,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ exito: false, mensaje: $json.mensaje }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "76efa3ce-8160-40ea-a917-b59345c54058",
+      "name": "Respuesta Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        840,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Normalizar Payload').first().json.crm_base_url }}/rest/people",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: { firstName: ($json.nombre.split(' ')[0] || $json.nombre), lastName: ($json.nombre.split(' ').slice(1).join(' ') || '') }, emails: { primaryEmail: ($json.email || ('sin-email+' + ($json.appointment_id || Date.now()) + '@chatbot.local')) }, phones: { primaryPhoneNumber: ($json.telefono || '') }, jobTitle: 'Lead chatbot', city: 'Madrid' }) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "88f6e26e-c95a-42f3-ab42-c6d2e1d108d1",
+      "name": "Crear Lead en Twenty CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        840,
+        480
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "RtUxWW34DSj9zMmF",
+          "name": "Twenty CRM API Header"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const norm = $('Normalizar Payload').first().json;\nconst resp = items[0].json || {};\nlet personId = '';\ntry {\n  if (resp.data && resp.data.createPerson && resp.data.createPerson.id) personId = resp.data.createPerson.id;\n  else if (resp.id) personId = resp.id;\n} catch (e) {}\nreturn [{\n  json: {\n    ...norm,\n    crm_person_id: personId,\n    crm_response_ok: !!personId\n  }\n}];"
+      },
+      "id": "a5641a05-fe4d-4c64-8383-751f1c00c6e4",
+      "name": "Extraer Person ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.crm_base_url }}/rest/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: 'Cita confirmada \u2014 ' + $json.nombre + ' (' + $json.fecha_formateada + ')', bodyV2: { markdown: '### Cita agendada por chatbot\\n\\n- **Cliente:** ' + $json.nombre + '\\n- **Email:** ' + ($json.email || '\u2014') + '\\n- **Tel\u00e9fono:** ' + ($json.telefono || '\u2014') + '\\n- **Cu\u00e1ndo:** ' + $json.fecha_formateada + ' (' + $json.timezone + ')\\n- **Motivo:** ' + $json.motivo + '\\n- **appointment_id:** ' + ($json.appointment_id || '\u2014') + '\\n- **ics_uid:** ' + ($json.ics_uid || '\u2014') + '\\n- **crm_person_id:** ' + ($json.crm_person_id || '\u2014') + '\\n\\nGenerada autom\u00e1ticamente por n8n (CON-181).' } }) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "19a2787f-51fa-4448-a1fa-affaa583ccbb",
+      "name": "Crear Note en Twenty CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1280,
+        480
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "RtUxWW34DSj9zMmF",
+          "name": "Twenty CRM API Header"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "calendarId": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "id"
+        },
+        "start": "={{ $json.fecha_iso }}",
+        "end": "={{ $json.fecha_fin_iso }}",
+        "summary": "=Consultor\u00eda gratuita \u2014 {{ $json.nombre }}",
+        "description": "=Cita agendada por chatbot consultoriaenmarketing.com (CON-181)\\n\\nCliente: {{ $json.nombre }}\\nEmail: {{ $json.email || '\u2014' }}\\nTel\u00e9fono: {{ $json.telefono || '\u2014' }}\\nMotivo: {{ $json.motivo }}\\nAppointment ID: {{ $json.appointment_id || '\u2014' }}\\nICS UID: {{ $json.ics_uid || '\u2014' }}",
+        "attendees": "={{ $json.email ? [{ email: $json.email, displayName: $json.nombre }] : [] }}",
+        "additionalFields": {
+          "location": "Google Meet (Consultor\u00eda en Marketing)",
+          "sendUpdates": "all"
+        }
+      },
+      "id": "4bf456a9-5d8c-4c09-b0c3-221da82f30d9",
+      "name": "Crear Evento Google Calendar",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.1,
+      "position": [
+        1500,
+        480
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "zpKRqIGkYo4MsDvb",
+          "name": "Google Calendar account"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=Confirmaci\u00f3n de tu consultor\u00eda gratuita \u2014 {{ $json.site_name }}",
+        "message": "=Hola {{ $json.nombre }},\\n\\nConfirmamos tu consultor\u00eda gratuita con {{ $json.site_name }}.\\n\\n\ud83d\udcc5 Cu\u00e1ndo: {{ $json.fecha_formateada }} ({{ $json.timezone }})\\n\u23f1\ufe0f Duraci\u00f3n: {{ $json.duration_min || 30 }} minutos\\n\ud83c\udfaf Motivo: {{ $json.motivo }}\\n\\nLa sesi\u00f3n se realizar\u00e1 online. Recibir\u00e1s una invitaci\u00f3n de Google Calendar con el enlace de la videollamada.\\n\\nSi necesitas reagendar o cancelar, responde a este email.\\n\\nSaludos,\\nEl equipo de {{ $json.site_name }}\\n{{ $json.site_url }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "f4a16f75-93e2-49c5-803f-0beaa63dfd67",
+      "name": "Email Confirmaci\u00f3n Cliente",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1720,
+        420
+      ],
+      "credentials": {
+        "gmailOAuth2Api": {
+          "id": "8",
+          "name": "Gmail account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "chatId": "=-1002000287494",
+        "text": "=\ud83e\udd16 *Nueva cita agendada por el chatbot*\\n\\n\ud83d\udc64 *Cliente:* {{ $json.nombre }}\\n\ud83d\udce7 *Email:* {{ $json.email || '\u2014' }}\\n\ud83d\udcde *Tel:* {{ $json.telefono || '\u2014' }}\\n\ud83d\udcc5 *Cu\u00e1ndo:* {{ $json.fecha_formateada }} ({{ $json.timezone }})\\n\ud83c\udfaf *Motivo:* {{ $json.motivo }}\\n\\nCRM Person: `{{ $json.crm_person_id || 'pendiente' }}`\\nCalendar: `{{ $('Crear Evento Google Calendar').first().json.id || 'pendiente' }}`\\nAppointment ID: `{{ $json.appointment_id || '\u2014' }}`",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "4c4236c2-5856-478f-aaff-d2948f864b47",
+      "name": "Notificar Equipo Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1720,
+        540
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "yMuCO0LIDiRSNeuu",
+          "name": "Telegram account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ exito: true, mensaje: 'Cita registrada y notificada', cita: { appointment_id: $('Normalizar Payload').first().json.appointment_id, cliente: $('Normalizar Payload').first().json.nombre, fecha: $('Normalizar Payload').first().json.fecha_formateada, timezone: $('Normalizar Payload').first().json.timezone, motivo: $('Normalizar Payload').first().json.motivo, crm_person_id: ($('Extraer Person ID').first().json.crm_person_id || ''), calendar_event_id: (($('Crear Evento Google Calendar').first().json.id) || ''), ics_uid: $('Normalizar Payload').first().json.ics_uid } }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "1e9877c0-6a19-4753-8064-247683cb34f3",
+      "name": "Respuesta \u00c9xito",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1960,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Cita v2": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Payload": {
+      "main": [
+        [
+          {
+            "node": "\u00bfDatos inv\u00e1lidos?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "\u00bfDatos inv\u00e1lidos?": {
+      "main": [
+        [
+          {
+            "node": "Respuesta Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Crear Lead en Twenty CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Lead en Twenty CRM": {
+      "main": [
+        [
+          {
+            "node": "Extraer Person ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Person ID": {
+      "main": [
+        [
+          {
+            "node": "Crear Note en Twenty CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Note en Twenty CRM": {
+      "main": [
+        [
+          {
+            "node": "Crear Evento Google Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Evento Google Calendar": {
+      "main": [
+        [
+          {
+            "node": "Email Confirmaci\u00f3n Cliente",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notificar Equipo Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Confirmaci\u00f3n Cliente": {
+      "main": [
+        [
+          {
+            "node": "Respuesta \u00c9xito",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notificar Equipo Telegram": {
+      "main": [
+        [
+          {
+            "node": "Respuesta \u00c9xito",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "id": "4E_00ydpN3iyH41ts"
+}

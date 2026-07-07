@@ -16,6 +16,7 @@ import {
   LogOut,
   Bot,
   Image,
+  Calendar,
 } from "lucide-react";
 
 const ADMIN_PASSWORD = "admin123";
@@ -144,6 +145,10 @@ function AdminDashboard() {
               <TrendingUp className="h-4 w-4 mr-2" />
               Analítica
             </TabsTrigger>
+            <TabsTrigger value="appointments">
+              <Calendar className="h-4 w-4 mr-2" />
+              Citas
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="chat">
@@ -211,6 +216,10 @@ function AdminDashboard() {
               key={bannerRefreshKey}
               onBannerChange={() => setBannerRefreshKey((k) => k + 1)}
             />
+          </TabsContent>
+
+          <TabsContent value="appointments">
+            <AppointmentsManager />
           </TabsContent>
         </Tabs>
       </div>
@@ -484,3 +493,219 @@ function BannerManager({ onBannerChange }: { onBannerChange: () => void }) {
     </div>
   );
 }
+
+type Appointment = {
+  id: string;
+  lead_id: string | null;
+  lead_name: string;
+  lead_email: string | null;
+  lead_phone: string | null;
+  start_at: string;
+  end_at: string;
+  timezone: string;
+  reason: string | null;
+  status: string;
+  source: string;
+  crm_person_id: string | null;
+  crm_activity_id: string | null;
+  calendar_event_id: string | null;
+  ics_uid: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+function AppointmentsManager() {
+  const [token, setToken] = useState("");
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const fetchAll = async (tok: string) => {
+    if (!tok) {
+      setError("Introduce el Admin Token.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/appointments?token=${encodeURIComponent(tok)}&all=1&limit=200`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error");
+      setAppointments(data.appointments || []);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error");
+      setAppointments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token) fetchAll(token);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  const siteUrl =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : "https://consultoriaenmarketing.com";
+  const icsUrl = `${siteUrl}/api/appointments/calendar.ics?token=${encodeURIComponent(
+    token || "TU_TOKEN"
+  )}`;
+
+  const copy = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {
+      // ignore
+    }
+  };
+
+  const fmt = (iso: string, tz: string) => {
+    try {
+      return new Intl.DateTimeFormat("es-ES", {
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: tz || undefined,
+        hour12: false,
+      }).format(new Date(iso));
+    } catch {
+      return iso;
+    }
+  };
+
+  const statusColor: Record<string, string> = {
+    confirmed: "bg-green-500/10 text-green-500 border-green-500/20",
+    cancelled: "bg-red-500/10 text-red-500 border-red-500/20",
+    completed: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+    rescheduled: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+    no_show: "bg-gray-500/10 text-gray-500 border-gray-500/20",
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Citas agendadas por el chatbot</CardTitle>
+          <CardDescription>
+            Todas las citas confirmadas/creadas desde el chatbot (CON-181). Cada cita dispara el
+            workflow n8n que sincroniza Twenty CRM, envía email al cliente y notifica al equipo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Lock className="h-4 w-4 text-muted-foreground" />
+            <Input
+              type="password"
+              placeholder="Admin token (ADMIN_TOKEN)"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              className="max-w-xs"
+            />
+          </div>
+
+          <div className="rounded-lg border bg-muted/40 p-3 text-xs space-y-1">
+            <div className="font-semibold">Feed ICS para tu calendario (Google/Apple/Outlook):</div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 break-all text-[11px] bg-background p-1.5 rounded border">
+                {icsUrl}
+              </code>
+              <Button size="sm" variant="outline" onClick={() => copy(icsUrl, "ics")}>
+                {copied === "ics" ? "Copiado ✓" : "Copiar"}
+              </Button>
+            </div>
+            <div className="text-muted-foreground">
+              En Google Calendar: <em>Añadir por URL</em> → pega esta URL. Refresco ~5 min.
+            </div>
+          </div>
+
+          {error && (
+            <div className="p-3 rounded-lg text-sm bg-red-500/10 text-red-500 border border-red-500/20">
+              {error}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="text-sm text-muted-foreground">Cargando…</div>
+          ) : appointments.length === 0 && token ? (
+            <div className="text-sm text-muted-foreground py-8 text-center">
+              No hay citas todavía. Cuando el chatbot acuerde una cita, aparecerá aquí.
+            </div>
+          ) : appointments.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-4">
+              Introduce el Admin Token para ver las citas.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left border-b text-xs uppercase text-muted-foreground">
+                    <th className="py-2 pr-3">Inicio</th>
+                    <th className="py-2 pr-3">Lead</th>
+                    <th className="py-2 pr-3">Contacto</th>
+                    <th className="py-2 pr-3">Motivo</th>
+                    <th className="py-2 pr-3">Estado</th>
+                    <th className="py-2 pr-3">CRM</th>
+                    <th className="py-2 pr-3">Cal.</th>
+                    <th className="py-2 pr-3">Origen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {appointments.map((a) => (
+                    <tr key={a.id} className="border-b last:border-0">
+                      <td className="py-2 pr-3 whitespace-nowrap">
+                        {fmt(a.start_at, a.timezone)}
+                        <div className="text-[11px] text-muted-foreground">{a.timezone}</div>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <div className="font-medium">{a.lead_name}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {a.lead_id ? a.lead_id.slice(0, 8) : "—"}
+                        </div>
+                      </td>
+                      <td className="py-2 pr-3 text-xs">
+                        {a.lead_email && <div>{a.lead_email}</div>}
+                        {a.lead_phone && (
+                          <div className="text-muted-foreground">{a.lead_phone}</div>
+                        )}
+                      </td>
+                      <td className="py-2 pr-3 max-w-[220px]">
+                        <div className="text-xs line-clamp-2">{a.reason || "—"}</div>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded text-[11px] border ${
+                            statusColor[a.status] || ""
+                          }`}
+                        >
+                          {a.status}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-3 text-[11px]">
+                        {a.crm_person_id ? "✓" : "—"}
+                        {a.crm_activity_id ? " ✓" : ""}
+                      </td>
+                      <td className="py-2 pr-3 text-[11px]">
+                        {a.calendar_event_id ? "✓ gcal" : "—"}
+                      </td>
+                      <td className="py-2 pr-3 text-[11px] text-muted-foreground">{a.source}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+

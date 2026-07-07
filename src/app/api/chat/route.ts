@@ -1,12 +1,38 @@
 import { NextResponse } from "next/server";
 import { services, faqs, siteConfig } from "@/lib/content";
 import { supabase } from "@/lib/supabase";
+import {
+  persistAppointment,
+  notifyAppointmentWebhook,
+  type ExtractedAppointment,
+} from "@/lib/appointment-service";
+import { formatAppointmentHuman, resolveTimezone } from "@/lib/appointments";
+
+const DEFAULT_TIMEZONE = resolveTimezone(process.env.CHATBOT_TIMEZONE);
+
+// Hora actual inyectada en el system prompt para que el modelo resuelva
+// expresiones relativas ("mañana a las 6", "el viernes que viene") a ISO.
+function currentTimeBlock(): string {
+  const now = new Date();
+  const isoUtc = now.toISOString();
+  const humanEs = new Intl.DateTimeFormat("es-ES", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: DEFAULT_TIMEZONE,
+    hour12: false,
+  }).format(now);
+  return `Hora actual (referencia): ${humanEs} (${DEFAULT_TIMEZONE}). ISO UTC: ${isoUtc}. Hoy es ${new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(now)}.`;
+}
 
 const systemPrompt = `Eres un asistente virtual de la agencia "${siteConfig.name}".
 Tu personalidad es profesional, cercana y servicial. Ayudas a los visitantes del sitio web con:
 
 1. Información sobre nuestros servicios de consultoría en marketing
-2. Generación de presupuestos personalizados
+2. Generación de presupuestos personalizado
 3. Responder preguntas frecuentes
 4. Calificar leads (entender qué necesita el cliente)
 5. Agendar consultorías gratuitas
@@ -35,7 +61,18 @@ proyecto es personalizado y que podemos darle un presupuesto exacto tras una bre
 NUNCA inventes información que no esté en el contexto. Si no sabes algo,
 indica que te pondrás en contacto con el equipo para responderle.
 
-Responde SIEMPRE en español.`;
+Responde SIEMPRE en español.
+
+FLUJO DE CITAS (muy importante):
+- Cuando llegues a un acuerdo de día y hora con el prospecto para una consultoría gratuita,
+  DEBES llamar a la función book_appointment con start_at en ISO 8601 UTC y la duración en minutos.
+- Horario laboral de la agencia: lunes a viernes, 9:00 a 19:00 (${DEFAULT_TIMEZONE}).
+  Si el cliente propone fuera de ese rango, propón alternativas dentro del horario laboral.
+- Las consultorías gratuitas duran por defecto 30 minutos.
+- Confirma SIEMPRE verbalmente con el cliente el día y la hora en formato legible ANTES
+  de llamar a book_appointment, y vuelve a confirmar la cita agendada en tu respuesta textual.
+- Si el cliente pide reagendar o cancelar una cita previa, pídele confirmación y luego
+  llama a la función book_appointment con el nuevo start_at y un campo reason que indique "reagendado".`;
 
 export async function POST(req: Request) {
   try {
@@ -81,11 +118,11 @@ export async function POST(req: Request) {
 
       // Build context with lead info for qualification
       const leadContext = lead
-        ? `\n\nInformación del prospecto:\n- Nombre: ${lead.name}\n- Email: ${lead.email}\n- Teléfono: ${lead.phone}\n\nUsa esta información para personalizar la conversación. Ya tienes sus datos de contacto, así que no se los pidas de nuevo. Céntrate en calificar sus necesidades.`
+        ? `\n\nInformación del prospecto:\n- Nombre: ${lead.name}\n- Email: ${lead.email}\n- Teléfono: ${lead.phone}\n\nUsa esta información para personalizar la conversación y para rellenar automáticamente los parámetros de book_appointment. Ya tienes sus datos de contacto, así que no se los pidas de nuevo. Céntrate en calificar sus necesidades.`
         : "";
 
       const context = [
-        { role: "system", content: systemPrompt + leadContext },
+        { role: "system", content: systemPrompt + leadContext + "\n\n" + currentTimeBlock() },
         ...(history || []).slice(-10).map(
           (m: { role: string; content: string }) => ({
             role: m.role === "user" ? "user" : "assistant",
@@ -101,45 +138,164 @@ export async function POST(req: Request) {
         process.env.DEEPSEEK_API_BASE_URL || "https://api.deepseek.com/v1";
       const maxTokens = 500;
       const temperature = 0.7;
+
+      const bookTool = {
+        type: "function" as const,
+        function: {
+          name: "book_appointment",
+          description:
+            "Agenda una consultoría gratuita cuando el cliente haya aceptado día y hora. Devuelve start_at en ISO 8601 UTC.",
+          parameters: {
+            type: "object",
+            properties: {
+              start_at: {
+                type: "string",
+                description:
+                  "Fecha y hora de inicio en ISO 8601 UTC, ej: 2026-07-10T16:00:00Z para las 18:00 de Madrid.",
+              },
+              duration_minutes: {
+                type: "number",
+                description: "Duración en minutos. Por defecto 30.",
+              },
+              reason: {
+                type: "string",
+                description: "Motivo o tema de la consultoría en una frase.",
+              },
+              lead_name: {
+                type: "string",
+                description: "Nombre del prospecto si no viene en el contexto.",
+              },
+              lead_email: {
+                type: "string",
+                description: "Email del prospecto si no viene en el contexto.",
+              },
+              lead_phone: {
+                type: "string",
+                description: "Teléfono del prospecto si no viene en el contexto.",
+              },
+            },
+            required: ["start_at"],
+          },
+        },
+      };
+
       let response: string;
+      const appointmentCreated: {
+        id: string;
+        start_at: string;
+        end_at: string;
+        timezone: string;
+        lead_name: string;
+      } = { id: "", start_at: "", end_at: "", timezone: "", lead_name: "" };
+      let hasAppointment = false;
 
-      if (process.env.OPENAI_API_KEY) {
-        const { default: OpenAI } = await import("openai");
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      // Helper único para procesar un tool_call book_appointment
+      const handleBookToolCall = async (
+        args: Record<string, unknown>
+      ): Promise<string> => {
+        const tz = resolveTimezone(process.env.CHATBOT_TIMEZONE);
+        const extracted: ExtractedAppointment = {
+          lead_name: String(args.lead_name || lead?.name || "").trim(),
+          lead_email: args.lead_email ? String(args.lead_email) : lead?.email || null,
+          lead_phone: args.lead_phone ? String(args.lead_phone) : lead?.phone || null,
+          start_at: String(args.start_at),
+          duration_minutes: args.duration_minutes
+            ? Number(args.duration_minutes)
+            : undefined,
+          timezone: tz,
+          reason: args.reason ? String(args.reason) : null,
+          raw_extraction: args as Record<string, unknown>,
+        };
+        const persisted = await persistAppointment(extracted, { source: "chatbot" });
+        appointmentCreated.id = persisted.id;
+        appointmentCreated.start_at = persisted.start_at;
+        appointmentCreated.end_at = persisted.end_at;
+        appointmentCreated.timezone = persisted.timezone;
+        appointmentCreated.lead_name = persisted.lead_name;
+        hasAppointment = true;
+        // Fire-and-forget asincrónico pero esperamos para reportar status
+        await notifyAppointmentWebhook(persisted);
+        const cuando = formatAppointmentHuman(persisted.start_at, persisted.timezone);
+        return `Cita confirmada para ${persisted.lead_name} el ${cuando}.`;
+      };
 
-        const completion = await openai.chat.completions.create({
-          model: openAiModel,
-          messages: context,
-          max_tokens: maxTokens,
-          temperature,
-        });
+      // Procesa tool_calls de OpenAI/DeepSeek, filtrando los que tienen .function
+      // (el SDK tipa como unión ChatCompletionMessageCustomToolCall | FunctionToolCall).
+      const processToolCalls = async (
+        toolCalls: unknown[] | undefined | null
+      ): Promise<void> => {
+        if (!toolCalls || toolCalls.length === 0) return;
+        for (const tc of toolCalls) {
+          if (!tc || typeof tc !== "object") continue;
+          const fn = (tc as { function?: { name?: string; arguments?: string } }).function;
+          if (!fn || fn.name !== "book_appointment") continue;
+          try {
+            const args = JSON.parse(fn.arguments || "{}");
+            await handleBookToolCall(args);
+          } catch (err) {
+            console.error("[chat] book_appointment error:", err);
+            response +=
+              "\n\n⚠️ No pude materializar la cita en el sistema. Un miembro del equipo te confirmará manualmente.";
+          }
+        }
+      };
 
+      try {
+        if (process.env.OPENAI_API_KEY) {
+          const { default: OpenAI } = await import("openai");
+          const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+          const completion = await openai.chat.completions.create({
+            model: openAiModel,
+            messages: context,
+            max_tokens: maxTokens,
+            temperature,
+            tools: [bookTool],
+            tool_choice: "auto",
+          });
+
+          const msg = completion.choices[0]?.message;
+          response =
+            msg?.content ||
+            "Lo siento, no pude procesar tu solicitud. ¿Puedes intentarlo de nuevo?";
+
+          await processToolCalls(msg?.tool_calls);
+        } else if (process.env.DEEPSEEK_API_KEY) {
+          const { default: OpenAI } = await import("openai");
+          const deepseek = new OpenAI({
+            apiKey: process.env.DEEPSEEK_API_KEY,
+            baseURL: deepSeekBaseUrl,
+          });
+
+          const completion = await deepseek.chat.completions.create({
+            model: deepSeekModel,
+            messages: context,
+            max_tokens: maxTokens,
+            temperature,
+            tools: [bookTool],
+            tool_choice: "auto",
+          });
+
+          const msg = completion.choices[0]?.message;
+          response =
+            msg?.content ||
+            "Lo siento, no pude procesar tu solicitud. ¿Puedes intentarlo de nuevo?";
+
+          await processToolCalls(msg?.tool_calls);
+        } else {
+          // Fallback without AI - includes qualification questions
+          response = generateFallbackResponse(message, lead);
+        }
+      } catch (llmErr) {
+        console.error("[chat] LLM error:", llmErr);
         response =
-          completion.choices[0]?.message?.content ||
-          "Lo siento, no pude procesar tu solicitud. ¿Puedes intentarlo de nuevo?";
-      } else if (process.env.DEEPSEEK_API_KEY) {
-        const { default: OpenAI } = await import("openai");
-        const deepseek = new OpenAI({
-          apiKey: process.env.DEEPSEEK_API_KEY,
-          baseURL: deepSeekBaseUrl,
-        });
-
-        const completion = await deepseek.chat.completions.create({
-          model: deepSeekModel,
-          messages: context,
-          max_tokens: maxTokens,
-          temperature,
-        });
-
-        response =
-          completion.choices[0]?.message?.content ||
-          "Lo siento, no pude procesar tu solicitud. ¿Puedes intentarlo de nuevo?";
-      } else {
-        // Fallback without AI - includes qualification questions
-        response = generateFallbackResponse(message, lead);
+          "Lo siento, tuve un problema técnico procesando tu mensaje. ¿Puedes intentarlo de nuevo?";
       }
 
-      return NextResponse.json({ response });
+      return NextResponse.json({
+        response,
+        appointment: hasAppointment ? appointmentCreated : null,
+      });
     }
 
     return NextResponse.json(
