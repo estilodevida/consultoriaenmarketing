@@ -771,13 +771,61 @@ export function Chatbot() {
           background-color: #001414 !important;
           color: #e6fffe !important;
           border: 1px solid rgba(255, 255, 255, 0.12) !important;
+          width: 100% !important;
+          height: 44px !important;
+          padding: 0 16px 0 36px !important;
+          font-size: 14px !important;
+          border-radius: 10px !important;
+          font-family: inherit !important;
+          box-sizing: border-box !important;
         }
         :global(.chatbot-modal-fallback input::placeholder) {
           color: #6b7591 !important;
         }
         :global(.chatbot-modal-fallback input:focus) {
           border-color: #17fbfb !important;
+          box-shadow: 0 0 0 3px rgba(23, 251, 251, 0.15) !important;
           outline: none !important;
+        }
+        :global(.chatbot-modal-fallback button[type="submit"]) {
+          background: linear-gradient(135deg, #8efd00 0%, #4c9e00 100%) !important;
+          color: #001414 !important;
+          border: none !important;
+          border-radius: 10px !important;
+          padding: 12px 20px !important;
+          font-weight: 600 !important;
+          font-size: 14px !important;
+          cursor: pointer !important;
+          width: 100% !important;
+          height: 44px !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 8px !important;
+          font-family: inherit !important;
+          transition: transform 0.15s, box-shadow 0.15s !important;
+        }
+        :global(.chatbot-modal-fallback button[type="submit"]:hover:not(:disabled)) {
+          transform: translateY(-1px) !important;
+          box-shadow: 0 8px 24px rgba(142, 253, 0, 0.3) !important;
+        }
+        :global(.chatbot-modal-fallback button[type="submit"]:disabled) {
+          opacity: 0.6 !important;
+          cursor: not-allowed !important;
+        }
+        :global(.chatbot-modal-fallback button[aria-label="Enviar mensaje"]) {
+          background: linear-gradient(135deg, #17fbfb 0%, #00a8bb 100%) !important;
+          color: #001414 !important;
+          border: none !important;
+          border-radius: 10px !important;
+          width: 44px !important;
+          height: 44px !important;
+          min-width: 44px !important;
+          padding: 0 !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          cursor: pointer !important;
         }
         @media (max-width: 640px) {
           :global(.chatbot-modal-fallback) {
