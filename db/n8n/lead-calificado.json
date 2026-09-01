@@ -1,0 +1,123 @@
+{
+  "name": "Lead calificado → propuesta — CON-191",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [{ "name": "CON-191" }, { "name": "watcher" }, { "name": "pipeline" }],
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "minutes", "minutesInterval": 5 }
+          ]
+        }
+      },
+      "id": "c2000001-0000-0000-0000-000000000001",
+      "name": "Cada 5 minutos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 360]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.TWENTY_BASE_URL || 'https://crm.cl1.nl' }}/rest/people?filter[pipeline_stage]=calificado&filter[proposal_sent_at][isNull]=true&limit=10",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "options": { "timeout": 15000 }
+      },
+      "id": "c2000002-0000-0000-0000-000000000002",
+      "name": "Buscar leads calificados en Twenty",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 360],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "RtUxWW34DSj9zMmF",
+          "name": "Twenty CRM API Header"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza la respuesta de Twenty y construye el array de leads a procesar.\nconst resp = items[0]?.json || {};\nconst data = resp.data || [];\nif (!Array.isArray(data) || data.length === 0) {\n  return [{ json: { count: 0, leads: [], skip: true } }];\n}\n\nconst leads = data\n  .filter((p) => p && p.id && p.emails?.primaryEmail)\n  .map((p) => {\n    const meta = p.customFields || p.metadata || {};\n    return {\n      twenty_id: p.id,\n      nombre: [p.name?.firstName, p.name?.lastName].filter(Boolean).join(' ') || p.emails.primaryEmail.split('@')[0],\n      email: p.emails.primaryEmail,\n      telefono: p.phones?.primaryPhoneNumber || '',\n      empresa: p.company?.name || '',\n      sector: meta.sector || 'general',\n      servicio: meta.servicio || 'Sistema de Captación',\n      zona: meta.zona || 'España',\n      motivo: meta.motivo || null,\n    };\n  });\n\nreturn [{ json: { count: leads.length, leads, skip: leads.length === 0 } }];"
+      },
+      "id": "c2000003-0000-0000-0000-000000000003",
+      "name": "Extraer leads pendientes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 360],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "leads",
+        "options": {}
+      },
+      "id": "c2000004-0000-0000-0000-000000000004",
+      "name": "Uno por uno",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [880, 360]
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "c2000005-0000-0000-0000-000000000005",
+      "name": "Delay 0-30s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1100, 360]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WEB_BASE_URL || 'https://consultoriaenmarketing.com' }}/api/proposals/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-Internal-Token", "value": "={{ $env.INTERNAL_API_TOKEN || '' }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ nombre: $json.nombre, email: $json.email, telefono: $json.telefono, empresa: $json.empresa, sector: $json.sector, servicio: $json.servicio, zona: $json.zona, motivo: $json.motivo, metadata: { twenty_id: $json.twenty_id } }) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "c2000006-0000-0000-0000-000000000006",
+      "name": "Disparar /api/proposals/generate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 360],
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Cada 5 minutos": {
+      "main": [[{ "node": "Buscar leads calificados en Twenty", "type": "main", "index": 0 }]]
+    },
+    "Buscar leads calificados en Twenty": {
+      "main": [[{ "node": "Extraer leads pendientes", "type": "main", "index": 0 }]]
+    },
+    "Extraer leads pendientes": {
+      "main": [[{ "node": "Uno por uno", "type": "main", "index": 0 }]]
+    },
+    "Uno por uno": {
+      "main": [[{ "node": "Delay 0-30s", "type": "main", "index": 0 }]]
+    },
+    "Delay 0-30s": {
+      "main": [[{ "node": "Disparar /api/proposals/generate", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {}
+}

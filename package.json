@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && rm -rf .next/standalone/.next/static && cp -r .next/static .next/standalone/.next/static && echo '✓ Static files copied to standalone'",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "deploy": "bash scripts/build-and-restart.sh"
+    "deploy": "bash scripts/build-and-restart.sh",
+    "test:proposal": "bash scripts/test-proposal-flow.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",

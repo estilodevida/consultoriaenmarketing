@@ -4,6 +4,7 @@
 //  - cliente Twenty CRM (registro de lead + nota)
 import type { OnboardingAnswers, Quote } from "./tariff";
 import { PRICES, SOCIAL_PROFILES, formatEUR } from "./tariff";
+import { escapeHtml } from "./html";
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://consultoriaenmarketing.com";
@@ -151,19 +152,6 @@ ${inputs}
 
 Importe orientativo. IVA no incluido. Te contactaremos en menos de 24h.`;
 }
-
-function escapeHtml(s: string): string {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-// ---------- Twenty CRM ----------
-// Twenty CRM expone una API REST/GraphQL. Necesitamos un API key de workspace.
-// Sin TWENTY_API_KEY configurado, la función es no-op y registra un aviso.
 
 export interface TwentyResult {
   ok: boolean;
