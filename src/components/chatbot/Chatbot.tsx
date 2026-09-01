@@ -58,6 +58,264 @@ const getInitialMessages = (name: string): Message[] => [
   },
 ];
 
+// Estilos críticos en línea: blindan el modal frente a cualquier purgado de
+// clases utility de Tailwind (CON-201). Las clases de Tailwind se mantienen
+// como mejora estética, pero el render del modal no depende de ellas.
+const styles = {
+  backdrop: {
+    position: "fixed" as const,
+    inset: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
+    backdropFilter: "blur(4px)",
+    WebkitBackdropFilter: "blur(4px)",
+    zIndex: 9998,
+    animation: "cbp-fade-in 0.2s ease-out",
+  },
+  modal: {
+    position: "fixed" as const,
+    bottom: 80,
+    right: 16,
+    zIndex: 9999,
+    width: 380,
+    maxWidth: "calc(100vw - 2rem)",
+    height: "min(560px, calc(100dvh - 120px))",
+    display: "flex",
+    flexDirection: "column" as const,
+    overflow: "hidden" as const,
+    backgroundColor: "#0a1e1e",
+    color: "#e6fffe",
+    border: "1px solid rgba(23, 251, 251, 0.18)",
+    borderRadius: 16,
+    boxShadow:
+      "0 24px 48px rgba(0, 0, 0, 0.55), 0 8px 16px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(23, 251, 251, 0.06)",
+    fontFamily: "inherit",
+    animation: "cbp-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+  },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    background: "linear-gradient(135deg, #7000ff 0%, #3c0090 100%)",
+    color: "#ffffff",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+    flexShrink: 0,
+  },
+  headerBrandWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+  },
+  headerIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  headerTitle: {
+    fontSize: 14,
+    fontWeight: 600,
+    lineHeight: 1.2,
+    display: "block",
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    opacity: 0.8,
+    display: "block",
+    marginTop: 2,
+  },
+  closeBtn: {
+    background: "rgba(255, 255, 255, 0.08)",
+    border: "none",
+    color: "#ffffff",
+    width: 32,
+    height: 32,
+    borderRadius: 999,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "background 0.2s",
+  },
+  body: {
+    flex: 1,
+    overflowY: "auto" as const,
+    padding: 20,
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 16,
+  },
+  prechatHeader: {
+    textAlign: "center" as const,
+    marginBottom: 8,
+  },
+  prechatIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 999,
+    backgroundColor: "rgba(142, 253, 0, 0.12)",
+    color: "#8efd00",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    margin: "0 auto 12px",
+  },
+  prechatTitle: {
+    fontSize: 16,
+    fontWeight: 600,
+    margin: "0 0 6px",
+  },
+  prechatText: {
+    fontSize: 13,
+    color: "#ccc3da",
+    lineHeight: 1.5,
+    margin: 0,
+  },
+  form: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 12,
+  },
+  formField: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 4,
+  },
+  inputWrap: {
+    position: "relative" as const,
+  },
+  inputIcon: {
+    position: "absolute" as const,
+    left: 12,
+    top: "50%",
+    transform: "translateY(-50%)",
+    color: "#8a93a8",
+    pointerEvents: "none" as const,
+  },
+  fieldError: {
+    fontSize: 12,
+    color: "#ffb1c3",
+    marginTop: 4,
+  },
+  submitBtn: {
+    width: "100%",
+    marginTop: 4,
+  },
+  privacyText: {
+    fontSize: 11,
+    color: "#8a93a8",
+    textAlign: "center" as const,
+    marginTop: 4,
+    lineHeight: 1.4,
+  },
+  privacyLink: {
+    color: "#17fbfb",
+    textDecoration: "underline",
+  },
+  messagesWrap: {
+    flex: 1,
+    overflowY: "auto" as const,
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 12,
+    padding: 4,
+  },
+  inputArea: {
+    borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+    padding: 12,
+    display: "flex",
+    gap: 8,
+    backgroundColor: "#001414",
+    flexShrink: 0,
+  },
+  fab: {
+    position: "fixed" as const,
+    bottom: 16,
+    right: 16,
+    zIndex: 9999,
+    width: 56,
+    height: 56,
+    borderRadius: 999,
+    border: "none",
+    cursor: "pointer",
+    background: "linear-gradient(135deg, #8efd00 0%, #4c9e00 100%)",
+    color: "#001414",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 12px 32px rgba(142, 253, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.35)",
+    transition: "transform 0.2s, box-shadow 0.2s",
+  },
+  fabNotif: {
+    position: "absolute" as const,
+    top: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 999,
+    backgroundColor: "#ffb1c3",
+    color: "#000a0a",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 10,
+    fontWeight: 700,
+    animation: "cbp-pulse 1.6s ease-in-out infinite",
+  },
+  fabPulse: {
+    position: "absolute" as const,
+    inset: 0,
+    borderRadius: 999,
+    backgroundColor: "#8efd00",
+    opacity: 0.25,
+    animation: "cbp-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite",
+    pointerEvents: "none" as const,
+  },
+  typingBubble: {
+    display: "flex",
+    gap: 4,
+    alignItems: "center",
+    padding: "10px 12px",
+  },
+};
+
+const messageRowStyle = (isUser: boolean): React.CSSProperties => ({
+  display: "flex",
+  gap: 8,
+  maxWidth: "85%",
+  marginLeft: isUser ? "auto" : 0,
+  flexDirection: isUser ? "row-reverse" : "row",
+});
+
+const messageAvatarStyle = (kind: "user" | "bot"): React.CSSProperties => ({
+  width: 24,
+  height: 24,
+  borderRadius: 999,
+  backgroundColor: kind === "bot" ? "rgba(209, 188, 255, 0.12)" : "rgba(23, 251, 251, 0.12)",
+  color: kind === "bot" ? "#d1bcff" : "#17fbfb",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+  marginTop: 2,
+});
+
+const messageBubbleStyle = (isUser: boolean): React.CSSProperties => ({
+  borderRadius: 12,
+  padding: "8px 12px",
+  fontSize: 14,
+  lineHeight: 1.45,
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+  backgroundColor: isUser ? "#17fbfb" : "#001e1e",
+  color: isUser ? "#001414" : "#e6fffe",
+  border: isUser ? "none" : "1px solid rgba(255, 255, 255, 0.06)",
+});
+
 export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [stage, setStage] = useState<Stage>("pre-chat");
@@ -73,6 +331,25 @@ export function Chatbot() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) setIsOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen]);
 
   const validateForm = (): boolean => {
     const errors: Partial<LeadData> = {};
@@ -182,7 +459,6 @@ export function Chatbot() {
     const savedLead = loadSavedLead();
     if (savedLead?.name && savedLead?.email && savedLead?.phone) {
       setLead(savedLead);
-      // If returning user, go straight to chat
       if (!chatStarted) {
         startChatFromSaved();
       }
@@ -193,7 +469,6 @@ export function Chatbot() {
     setIsOpen(true);
   };
 
-  // Listen for custom event to open chatbot from external buttons
   useEffect(() => {
     const handler = () => handleOpen();
     window.addEventListener("open-chatbot", handler);
@@ -203,247 +478,318 @@ export function Chatbot() {
   return (
     <>
       {isOpen && (
-          <div className="fixed bottom-[80px] right-[16px] z-50 w-[380px] max-w-[calc(100vw-2rem)] rounded-xl border bg-card shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-2">
-          {/* Header */}
-          <div className="flex items-center justify-between bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <div>
-                <span className="font-semibold text-sm block">Asistente Virtual</span>
-                <span className="text-[10px] opacity-80">Consultoría en Marketing</span>
-              </div>
-            </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="hover:bg-white/10 rounded-full p-1 transition-colors"
-              aria-label="Cerrar chat"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {stage === "pre-chat" ? (
-            /* Pre-chat form */
-            <div className="p-5 space-y-4">
-              <div className="text-center space-y-2">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                  <MessageCircle className="h-6 w-6 text-primary" />
+        <>
+          {/* Backdrop oscuro semitransparente */}
+          <div
+            style={styles.backdrop}
+            onClick={() => setIsOpen(false)}
+            aria-hidden="true"
+            data-testid="chatbot-backdrop"
+          />
+          {/* Modal flotante con estilos en línea */}
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Chat con asistente virtual"
+            style={styles.modal}
+            data-testid="chatbot-modal"
+            className="chatbot-modal-fallback"
+          >
+            {/* Header */}
+            <div style={styles.header}>
+              <div style={styles.headerBrandWrap}>
+                <div style={styles.headerIcon}>
+                  <Sparkles size={16} />
                 </div>
-                <h3 className="font-semibold text-base">¡Hola! Antes de empezar...</h3>
-                <p className="text-sm text-muted-foreground">
-                  Necesitamos tus datos para ofrecerte un mejor servicio, hacer
-                  seguimiento de tu consulta y escalarla a un especialista si es
-                  necesario.
+                <div>
+                  <span style={styles.headerTitle}>Asistente Virtual</span>
+                  <span style={styles.headerSubtitle}>Consultoría en Marketing</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                style={styles.closeBtn}
+                aria-label="Cerrar chat"
+                type="button"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {stage === "pre-chat" ? (
+              <div style={styles.body}>
+                <div style={styles.prechatHeader}>
+                  <div style={styles.prechatIcon}>
+                    <MessageCircle size={22} />
+                  </div>
+                  <h3 style={styles.prechatTitle}>¡Hola! Antes de empezar...</h3>
+                  <p style={styles.prechatText}>
+                    Necesitamos tus datos para ofrecerte un mejor servicio, hacer
+                    seguimiento de tu consulta y escalarla a un especialista si es
+                    necesario.
+                  </p>
+                </div>
+
+                <form onSubmit={handleLeadSubmit} style={styles.form}>
+                  <div style={styles.formField}>
+                    <div style={styles.inputWrap}>
+                      <span style={styles.inputIcon}>
+                        <UserCircle size={16} />
+                      </span>
+                      <Input
+                        placeholder="Tu nombre completo"
+                        value={lead.name}
+                        onChange={(e) => {
+                          setLead((l) => ({ ...l, name: e.target.value }));
+                          if (formErrors.name) setFormErrors((e) => ({ ...e, name: undefined }));
+                        }}
+                        autoComplete="name"
+                        style={{ paddingLeft: 36 }}
+                      />
+                    </div>
+                    {formErrors.name && (
+                      <span style={styles.fieldError}>{formErrors.name}</span>
+                    )}
+                  </div>
+
+                  <div style={styles.formField}>
+                    <div style={styles.inputWrap}>
+                      <span style={styles.inputIcon}>
+                        <Mail size={16} />
+                      </span>
+                      <Input
+                        type="email"
+                        placeholder="tu@email.com"
+                        value={lead.email}
+                        onChange={(e) => {
+                          setLead((l) => ({ ...l, email: e.target.value }));
+                          if (formErrors.email) setFormErrors((e) => ({ ...e, email: undefined }));
+                        }}
+                        autoComplete="email"
+                        style={{ paddingLeft: 36 }}
+                      />
+                    </div>
+                    {formErrors.email && (
+                      <span style={styles.fieldError}>{formErrors.email}</span>
+                    )}
+                  </div>
+
+                  <div style={styles.formField}>
+                    <div style={styles.inputWrap}>
+                      <span style={styles.inputIcon}>
+                        <Phone size={16} />
+                      </span>
+                      <Input
+                        type="tel"
+                        placeholder="+34 600 000 000"
+                        value={lead.phone}
+                        onChange={(e) => {
+                          setLead((l) => ({ ...l, phone: e.target.value }));
+                          if (formErrors.phone) setFormErrors((e) => ({ ...e, phone: undefined }));
+                        }}
+                        autoComplete="tel"
+                        style={{ paddingLeft: 36 }}
+                      />
+                    </div>
+                    {formErrors.phone && (
+                      <span style={styles.fieldError}>{formErrors.phone}</span>
+                    )}
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={isSavingLead}
+                    size="lg"
+                    style={styles.submitBtn}
+                  >
+                    {isSavingLead ? (
+                      <>
+                        <Loader2 size={16} className="cbp-spin" style={{ marginRight: 8 }} />
+                        Guardando...
+                      </>
+                    ) : (
+                      "Iniciar conversación"
+                    )}
+                  </Button>
+                </form>
+
+                <p style={styles.privacyText}>
+                  Tus datos están seguros. Solo los usaremos para atender tu consulta.
+                  Consulta nuestra{" "}
+                  <a href="/privacidad" style={styles.privacyLink}>
+                    política de privacidad
+                  </a>
+                  .
                 </p>
               </div>
-
-              <form onSubmit={handleLeadSubmit} className="space-y-3">
-                <div>
-                  <div className="relative">
-                    <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Tu nombre completo"
-                      value={lead.name}
-                      onChange={(e) => {
-                        setLead((l) => ({ ...l, name: e.target.value }));
-                        if (formErrors.name) setFormErrors((e) => ({ ...e, name: undefined }));
-                      }}
-                      className="pl-9"
-                      autoComplete="name"
-                    />
-                  </div>
-                  {formErrors.name && (
-                    <p className="text-xs text-destructive mt-1">{formErrors.name}</p>
-                  )}
-                </div>
-
-                <div>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="email"
-                      placeholder="tu@email.com"
-                      value={lead.email}
-                      onChange={(e) => {
-                        setLead((l) => ({ ...l, email: e.target.value }));
-                        if (formErrors.email) setFormErrors((e) => ({ ...e, email: undefined }));
-                      }}
-                      className="pl-9"
-                      autoComplete="email"
-                    />
-                  </div>
-                  {formErrors.email && (
-                    <p className="text-xs text-destructive mt-1">{formErrors.email}</p>
-                  )}
-                </div>
-
-                <div>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="tel"
-                      placeholder="+34 600 000 000"
-                      value={lead.phone}
-                      onChange={(e) => {
-                        setLead((l) => ({ ...l, phone: e.target.value }));
-                        if (formErrors.phone) setFormErrors((e) => ({ ...e, phone: undefined }));
-                      }}
-                      className="pl-9"
-                      autoComplete="tel"
-                    />
-                  </div>
-                  {formErrors.phone && (
-                    <p className="text-xs text-destructive mt-1">{formErrors.phone}</p>
-                  )}
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isSavingLead}
-                  size="lg"
-                >
-                  {isSavingLead ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Guardando...
-                    </>
-                  ) : (
-                    "Iniciar conversación"
-                  )}
-                </Button>
-              </form>
-
-              <p className="text-[10px] text-muted-foreground text-center">
-                Tus datos están seguros. Solo los usaremos para atender tu consulta.
-                Consulta nuestra{" "}
-                <a href="/privacidad" className="underline hover:text-foreground">
-                  política de privacidad
-                </a>
-                .
-              </p>
-            </div>
-          ) : (
-            /* Chat messages */
-            <>
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[380px]">
-                {messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={cn(
-                      "flex gap-2 max-w-[85%]",
-                      msg.role === "user" ? "ml-auto" : ""
-                    )}
-                  >
-                    {msg.role === "bot" && (
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                        <Bot className="h-3.5 w-3.5 text-primary" />
+            ) : (
+              <>
+                <div style={styles.messagesWrap}>
+                  {messages.map((msg) => {
+                    const isUser = msg.role === "user";
+                    return (
+                      <div
+                        key={msg.id}
+                        style={{
+                          ...messageRowStyle(isUser),
+                        }}
+                      >
+                        <div style={messageAvatarStyle(msg.role)}>
+                          {isUser ? <User size={14} /> : <Bot size={14} />}
+                        </div>
+                        <div style={messageBubbleStyle(isUser)}>{msg.content}</div>
                       </div>
-                    )}
-                    <div
-                      className={cn(
-                        "rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
-                        msg.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted"
-                      )}
-                    >
-                      {msg.content}
-                    </div>
-                    {msg.role === "user" && (
-                      <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 mt-1">
-                        <User className="h-3.5 w-3.5 text-accent" />
+                    );
+                  })}
+                  {isLoading && (
+                    <div style={messageRowStyle(false)}>
+                      <div style={messageAvatarStyle("bot")}>
+                        <Bot size={14} />
                       </div>
-                    )}
-                  </div>
-                ))}
-                {isLoading && (
-                  <div className="flex gap-2 max-w-[85%]">
-                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                      <Bot className="h-3.5 w-3.5 text-primary" />
+                      <div style={{ ...messageBubbleStyle(false), ...styles.typingBubble }}>
+                        <span
+                          className="cbp-bounce"
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: 999,
+                            backgroundColor: "#17fbfb",
+                            display: "inline-block",
+                            animationDelay: "0ms",
+                          }}
+                        />
+                        <span
+                          className="cbp-bounce"
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: 999,
+                            backgroundColor: "#17fbfb",
+                            display: "inline-block",
+                            animationDelay: "150ms",
+                          }}
+                        />
+                        <span
+                          className="cbp-bounce"
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: 999,
+                            backgroundColor: "#17fbfb",
+                            display: "inline-block",
+                            animationDelay: "300ms",
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="rounded-lg px-3 py-2 bg-muted flex gap-1">
-                      <span className="w-2 h-2 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <span className="w-2 h-2 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <span className="w-2 h-2 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: "300ms" }} />
-                    </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
 
-              {/* Input area */}
-              <div className="border-t p-4">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
                     handleSend();
                   }}
-                  className="flex gap-2"
+                  style={styles.inputArea}
                 >
                   <Input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Escribe tu mensaje..."
-                    className="flex-1"
                     disabled={isLoading}
+                    style={{ flex: 1 }}
                   />
                   <Button
                     type="submit"
                     size="icon"
                     disabled={isLoading || !input.trim()}
+                    aria-label="Enviar mensaje"
                   >
-                    <Send className="h-4 w-4" />
+                    <Send size={16} />
                   </Button>
                 </form>
-              </div>
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </div>
+        </>
       )}
 
-      {/* Floating button with animations */}
+      {/* Botón flotante */}
       <button
         onClick={() => (isOpen ? setIsOpen(false) : handleOpen())}
-        className={cn(
-          "fixed bottom-[16px] right-[16px] z-50 w-[56px] h-[56px] rounded-full shadow-lg transition-all duration-300 flex items-center justify-center group",
-          "bg-gradient-to-br from-accent to-accent/80 text-accent-foreground",
-          !isOpen && "animate-bounce-gentle hover:scale-110",
-          "hover:shadow-xl hover:shadow-accent/25"
-        )}
-        aria-label="Abrir chat"
+        style={styles.fab}
+        aria-label={isOpen ? "Cerrar chat" : "Abrir chat"}
+        type="button"
+        data-testid="chatbot-fab"
       >
         {isOpen ? (
-          <X className="h-6 w-6" />
+          <X size={24} />
         ) : (
           <>
-            <MessageCircle className="h-6 w-6" />
-            {/* Notification dot */}
-            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground animate-pulse">
-              <Sparkles className="h-3 w-3" />
+            <MessageCircle size={24} />
+            <span style={styles.fabNotif}>
+              <Sparkles size={12} />
             </span>
-            {/* Pulse ring */}
-            <span className="absolute inset-0 rounded-full bg-accent animate-ping opacity-20" />
+            <span style={styles.fabPulse} />
           </>
         )}
       </button>
 
-      {/* CSS for bounce animation */}
+      {/* Animaciones inline (no dependen de Tailwind) */}
       <style jsx>{`
-        @keyframes bounce-gentle {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-6px); }
+        @keyframes cbp-fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
-        .animate-bounce-gentle {
-          animation: bounce-gentle 2.5s ease-in-out infinite;
+        @keyframes cbp-slide-up {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .animate-ping {
-          animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+        @keyframes cbp-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
         }
-        @keyframes ping {
+        @keyframes cbp-ping {
           75%, 100% { transform: scale(2); opacity: 0; }
+        }
+        @keyframes cbp-bounce {
+          0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+          40% { transform: translateY(-4px); opacity: 1; }
+        }
+        @keyframes cbp-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        :global(.cbp-bounce) {
+          animation: cbp-bounce 1.2s ease-in-out infinite;
+        }
+        :global(.cbp-spin) {
+          animation: cbp-spin 1s linear infinite;
+        }
+        :global(.chatbot-modal-fallback input) {
+          background-color: #001414 !important;
+          color: #e6fffe !important;
+          border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        }
+        :global(.chatbot-modal-fallback input::placeholder) {
+          color: #6b7591 !important;
+        }
+        :global(.chatbot-modal-fallback input:focus) {
+          border-color: #17fbfb !important;
+          outline: none !important;
+        }
+        @media (max-width: 640px) {
+          :global(.chatbot-modal-fallback) {
+            bottom: 0 !important;
+            right: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            max-width: 100vw !important;
+            height: 100dvh !important;
+            border-radius: 0 !important;
+            border: none !important;
+          }
         }
       `}</style>
     </>

@@ -1,5 +1,13 @@
 import type { Config } from 'tailwindcss'
 
+// Nota: el proyecto tiene tailwindcss v4 instalado pero globals.css usa
+// sintaxis v3 (@tailwind base/components/utilities). Esto significa que
+// el plugin @tailwindcss/postcss no procesa las directivas v3 y el bundle
+// sólo incluye el CSS personalizado de globals.css, no las utility classes.
+// En CON-201 el modal del Chatbot se renderizaba sin fondo/padding/bordes
+// por esta misma razón. La solución adoptada en CON-201 es que el Chatbot
+// no dependa de utility classes: usa estilos inline críticos y
+// sobreescribe el shadcn Input/Button dentro de su scope vía :global().
 const config: Config = {
   content: [
     './app/**/*.{js,ts,jsx,tsx,mdx}',
