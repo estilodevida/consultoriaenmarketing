@@ -203,7 +203,7 @@ export function Chatbot() {
   return (
     <>
       {isOpen && (
-        <div className="fixed bottom-20 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] rounded-xl border bg-card shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-2">
+          <div className="fixed bottom-[80px] right-[16px] z-50 w-[380px] max-w-[calc(100vw-2rem)] rounded-xl border bg-card shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-2">
           {/* Header */}
           <div className="flex items-center justify-between bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-4">
             <div className="flex items-center gap-2">
@@ -408,7 +408,7 @@ export function Chatbot() {
       <button
         onClick={() => (isOpen ? setIsOpen(false) : handleOpen())}
         className={cn(
-          "fixed bottom-4 right-4 z-50 w-14 h-14 rounded-full shadow-lg transition-all duration-300 flex items-center justify-center group",
+          "fixed bottom-[16px] right-[16px] z-50 w-[56px] h-[56px] rounded-full shadow-lg transition-all duration-300 flex items-center justify-center group",
           "bg-gradient-to-br from-accent to-accent/80 text-accent-foreground",
           !isOpen && "animate-bounce-gentle hover:scale-110",
           "hover:shadow-xl hover:shadow-accent/25"
